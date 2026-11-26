@@ -231,6 +231,8 @@ export function updateConfig(
   const payload: ExamConfig = {
     startTimeMs: config.startTimeMs,
     durationMinutes: config.durationMinutes,
+    ...(config.firstBlockMinutes !== undefined ? { firstBlockMinutes: config.firstBlockMinutes } : {}),
+    ...(config.lastBlockMinutes !== undefined ? { lastBlockMinutes: config.lastBlockMinutes } : {}),
     ...(config.clockOffsetMs !== undefined
       ? { clockOffsetMs: config.clockOffsetMs }
       : {}),

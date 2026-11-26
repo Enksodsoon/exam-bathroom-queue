@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { FIRST_BLOCK_MINUTES, LAST_BLOCK_MINUTES, MAX_BLOCK_MINUTES, getExamBlockMinutes, isValidExamBlockMinutes } from "@/lib/domain/window";
 import type { EntryAction, SessionSnapshot, Sex } from "@/lib/domain/types";
 import {
   ApiClientError,
@@ -60,6 +61,8 @@ interface ConfigDraft {
   exactStartMs: number | null;
   durationMinutes: string;
   offsetMinutes: string;
+  firstBlockMinutes: string;
+  lastBlockMinutes: string;
 }
 
 type ActiveDrawer = "timer" | "qr" | "staff" | null;
@@ -167,13 +170,16 @@ export function ControllerDashboard({
       ? queueErrorState.text
       : null;
 
-  const windowMeta = describeWindowStatus(snapshot.windowStatus);
+  const windowMeta = describeWindowStatus(snapshot.windowStatus, snapshot.examConfig);
 
+  const savedBlocks = getExamBlockMinutes(snapshot.examConfig);
   const baseConfigValues: ConfigDraft = snapshot.examConfig
     ? {
         startLocal: toDateTimeLocalValue(snapshot.examConfig.startTimeMs),
         exactStartMs: snapshot.examConfig.startTimeMs,
         durationMinutes: String(snapshot.examConfig.durationMinutes),
+        firstBlockMinutes: String(savedBlocks.first),
+        lastBlockMinutes: String(savedBlocks.last),
         offsetMinutes: String(
           Math.round((snapshot.examConfig.clockOffsetMs ?? 0) / 60_000),
         ),
@@ -183,16 +189,24 @@ export function ControllerDashboard({
         exactStartMs: null,
         durationMinutes: "120",
         offsetMinutes: "0",
+        firstBlockMinutes: String(FIRST_BLOCK_MINUTES),
+        lastBlockMinutes: String(LAST_BLOCK_MINUTES),
       };
 
   const activeConfig = configDraft ?? baseConfigValues;
   const parsedDurationNum = Number(activeConfig.durationMinutes);
-  const showShortDurationWarning =
-    Number.isFinite(parsedDurationNum) &&
-    parsedDurationNum >= 1 &&
-    parsedDurationNum <= 50;
+  const firstBlock = Number(activeConfig.firstBlockMinutes);
+  const lastBlock = Number(activeConfig.lastBlockMinutes);
+  const blocksValid = activeConfig.firstBlockMinutes !== "" && activeConfig.lastBlockMinutes !== "" &&
+    isValidExamBlockMinutes(firstBlock) && isValidExamBlockMinutes(lastBlock);
+  const openMinutes = Number.isInteger(parsedDurationNum) && parsedDurationNum >= 1 && blocksValid
+    ? Math.max(0, parsedDurationNum - firstBlock - lastBlock)
+    : null;
+  const showShortDurationWarning = openMinutes === 0;
 
   const updateDraft = (patch: Partial<ConfigDraft>) => {
+    if (patch.durationMinutes !== undefined || patch.firstBlockMinutes !== undefined ||
+      patch.lastBlockMinutes !== undefined) setConfirmShortDuration(false);
     setConfigDraft((prev) => ({
       ...(prev ?? baseConfigValues),
       ...patch,
@@ -234,11 +248,20 @@ export function ControllerDashboard({
       return;
     }
 
-    if (duration <= 50 && !confirmShortDuration) {
+    if (!blocksValid) {
       setConfigMessageState({
         clearedSeq: currentClearedSeq,
         tone: "error",
-        text: "Confirm short duration (no normal bathroom window) before saving.",
+        text: `Enter whole block lengths from 0 to ${MAX_BLOCK_MINUTES} minutes.`,
+      });
+      return;
+    }
+
+    if (showShortDurationWarning && !confirmShortDuration) {
+      setConfigMessageState({
+        clearedSeq: currentClearedSeq,
+        tone: "error",
+        text: "Confirm that there is no normal bathroom window before saving.",
       });
       return;
     }
@@ -262,10 +285,13 @@ export function ControllerDashboard({
         const res = await updateConfig(sessionId, controllerKey, {
           startTimeMs: startMs,
           durationMinutes: duration,
+          firstBlockMinutes: firstBlock,
+          lastBlockMinutes: lastBlock,
           clockOffsetMs: Math.round(offsetMins * 60_000),
         });
         onMutationSnapshot(res.snapshot);
         setConfigDraft(null);
+        setConfirmShortDuration(false);
         setConfigMessageState({
           clearedSeq: res.snapshot.clearedSeq,
           tone: "success",
@@ -703,6 +729,36 @@ export function ControllerDashboard({
         )}
       </header>
 
+      {!syncStale && (!snapshot.examConfig || snapshot.staff.length === 0) && (
+        <section
+          aria-label="Exam setup"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-emerald-200 bg-emerald-50 px-5 py-3"
+        >
+          <div>
+            <p className="text-sm font-semibold text-emerald-950">
+              {snapshot.examConfig ? "2 of 2 · Invite your proctors" : "1 of 2 · Set up the exam"}
+            </p>
+            <p className="mt-0.5 text-sm text-emerald-900">
+              {snapshot.examConfig
+                ? "Share the staff QR or link. This step clears once the first proctor joins."
+                : "Choose the start time and duration before opening the queue."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const button = snapshot.examConfig ? qrBtnRef.current : timerBtnRef.current;
+              const drawer = snapshot.examConfig ? "qr" : "timer";
+              if (activeDrawer !== drawer) toggleDrawer(drawer);
+              button?.focus();
+            }}
+            className="inline-flex min-h-[44px] items-center rounded-full bg-emerald-900 px-5 text-sm font-semibold text-white hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-900"
+          >
+            {snapshot.examConfig ? "Invite proctors" : "Set exam timer"}
+          </button>
+        </section>
+      )}
+
       {/* Top-Bar Drawers (Timer / QR / Staff) */}
       {activeDrawer === "timer" && (
         <section
@@ -851,6 +907,40 @@ export function ControllerDashboard({
               )}
             </div>
 
+            <fieldset className="space-y-2 rounded-2xl border border-slate-200 px-3 pb-3">
+              <legend className="px-1 text-xs font-semibold text-slate-700">Bathroom request blocks</legend>
+              <div className="grid grid-cols-2 gap-3">
+                {([
+                  ["firstBlockMinutes", "Block first (minutes)"],
+                  ["lastBlockMinutes", "Block last (minutes)"],
+                ] as const).map(([field, label]) => (
+                  <label key={field} className="block text-xs font-medium text-slate-700">
+                    {label}
+                    <input
+                      type="number"
+                      min={0}
+                      max={MAX_BLOCK_MINUTES}
+                      step={1}
+                      value={activeConfig[field]}
+                      onChange={(e) => updateDraft({ [field]: e.target.value })}
+                      className="mt-1 block min-h-[44px] w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-sm text-slate-950 focus:outline-2 focus:outline-offset-2 focus:outline-slate-700"
+                    />
+                  </label>
+                ))}
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-1">
+                <p className="text-xs text-slate-700">
+                  0 means no block. {openMinutes !== null && <>Normal request window: <strong>{openMinutes} min</strong>.</>}
+                </p>
+                <button type="button" onClick={() => updateDraft({
+                  firstBlockMinutes: String(FIRST_BLOCK_MINUTES),
+                  lastBlockMinutes: String(LAST_BLOCK_MINUTES),
+                })} className="min-h-[44px] px-2 text-xs font-medium text-slate-700 underline">
+                  Reset to 30 / 20
+                </button>
+              </div>
+            </fieldset>
+
             {showShortDurationWarning && (
               <label className="flex cursor-pointer items-center gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs font-medium text-amber-900">
                 <input
@@ -860,8 +950,7 @@ export function ControllerDashboard({
                   className="h-4 w-4 shrink-0 rounded border-amber-400 text-amber-800"
                 />
                 <span>
-                  Duration ≤ 50m leaves no normal bathroom window (first 30m +
-                  last 20m). Confirm override-only exam.
+                  These blocks leave no normal bathroom window. Confirm override-only exam.
                 </span>
               </label>
             )}
@@ -944,7 +1033,7 @@ export function ControllerDashboard({
 
       {/* Alert Telemetry & Floating Spotlight */}
       <AlertBanner
-        activeAlert={alert.activeAlert}
+        activeAlert={syncStale ? null : alert.activeAlert}
         muted={alert.muted}
         audioAlertCount={alert.audioAlertCount}
         vibrateAlertCount={alert.vibrateAlertCount}

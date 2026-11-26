@@ -1,5 +1,7 @@
 "use client";
 
+import { isValidExamBlockMinutes } from "@/lib/domain/window";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SessionSnapshot } from "@/lib/domain/types";
 import {
@@ -111,7 +113,11 @@ export function isValidBroadcastSnapshot(
       !Number.isFinite(incoming.examConfig.startTimeMs) ||
       typeof incoming.examConfig.durationMinutes !== "number" ||
       !Number.isFinite(incoming.examConfig.durationMinutes) ||
-      incoming.examConfig.durationMinutes < 1
+      incoming.examConfig.durationMinutes < 1 ||
+      (incoming.examConfig.firstBlockMinutes !== undefined &&
+        !isValidExamBlockMinutes(incoming.examConfig.firstBlockMinutes)) ||
+      (incoming.examConfig.lastBlockMinutes !== undefined &&
+        !isValidExamBlockMinutes(incoming.examConfig.lastBlockMinutes))
     ) {
       return false;
     }

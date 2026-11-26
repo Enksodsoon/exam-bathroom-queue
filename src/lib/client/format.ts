@@ -1,4 +1,5 @@
-import type { WindowStatus } from "@/lib/domain/types";
+import { getExamBlockMinutes } from "@/lib/domain/window";
+import type { ExamConfig, WindowStatus } from "@/lib/domain/types";
 
 export interface WindowStatusMeta {
   label: string;
@@ -6,7 +7,19 @@ export interface WindowStatusMeta {
   tone: "allowed" | "blocked" | "neutral";
 }
 
-export function describeWindowStatus(status: WindowStatus): WindowStatusMeta {
+export function describeWindowStatus(
+  status: WindowStatus,
+  config?: ExamConfig | null,
+): WindowStatusMeta {
+  const { first, last } = getExamBlockMinutes(config);
+  if (config && first + last >= config.durationMinutes &&
+    (status === "BEFORE_START" || status === "FIRST_30_MIN" || status === "LAST_20_MIN")) {
+    return {
+      label: "No normal request window",
+      description: "The opening and closing blocks cover the whole exam. Contact the controller if needed.",
+      tone: "blocked",
+    };
+  }
   switch (status) {
     case "UNCONFIGURED":
       return {
@@ -19,14 +32,15 @@ export function describeWindowStatus(status: WindowStatus): WindowStatusMeta {
       return {
         label: "Before Start (Blocked)",
         description:
-          "Exam has not started yet. Bathroom queue opens 30 minutes after exam start.",
+          first === 0 ? "The queue opens when the exam starts." :
+          `The queue opens ${first} minutes after the exam starts.`,
         tone: "blocked",
       };
     case "FIRST_30_MIN":
       return {
-        label: "First 30 Minutes (Blocked)",
+        label: `First ${first} Minutes (Blocked)`,
         description:
-          "Bathroom requests from roaming staff are blocked during the first 30 minutes of the exam.",
+          `Requests are paused for the first ${first} minutes of the exam.`,
         tone: "blocked",
       };
     case "ALLOWED":
@@ -38,9 +52,9 @@ export function describeWindowStatus(status: WindowStatus): WindowStatusMeta {
       };
     case "LAST_20_MIN":
       return {
-        label: "Last 20 Minutes (Blocked)",
+        label: `Last ${last} Minutes (Blocked)`,
         description:
-          "Bathroom requests from roaming staff are blocked during the last 20 minutes of the exam.",
+          `Requests are paused for the final ${last} minutes of the exam.`,
         tone: "blocked",
       };
     case "AFTER_END":

@@ -2,6 +2,7 @@ export type Sex = "M" | "F";
 
 export type EntryStatus = "queued" | "in_bathroom" | "returned" | "removed";
 
+// Keep the historical wire names for opening/closing blocks; their lengths are configurable.
 export type WindowStatus =
   | "UNCONFIGURED"
   | "BEFORE_START"
@@ -14,6 +15,8 @@ export interface ExamConfig {
   startTimeMs: number;
   durationMinutes: number;
   clockOffsetMs?: number;
+  firstBlockMinutes?: number;
+  lastBlockMinutes?: number;
 }
 
 export interface QueueEntry {

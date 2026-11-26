@@ -89,7 +89,7 @@ export const Selectors = {
 
   saveConfigButton: (page: Page): Locator =>
     page
-      .getByRole('button', { name: /save.*config|update.*window|save.*time|apply.*config|set.*exam/i })
+      .getByRole('button', { name: /save.*config|update.*window|save.*time|apply.*config|set.*exam config/i })
       .first(),
 
   clearSessionButton: (page: Page): Locator =>

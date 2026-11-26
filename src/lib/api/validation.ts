@@ -1,4 +1,6 @@
 import {
+  isValidExamBlockMinutes,
+  MAX_BLOCK_MINUTES,
   MAX_VALID_DATE_MS,
   MS_PER_MINUTE,
   type EntryAction,
@@ -155,7 +157,17 @@ export function validateConfigBody(body: Record<string, unknown>): ExamConfig {
     );
   }
 
+  const { firstBlockMinutes, lastBlockMinutes } = body;
+  if (
+    (firstBlockMinutes !== undefined && !isValidExamBlockMinutes(firstBlockMinutes)) ||
+    (lastBlockMinutes !== undefined && !isValidExamBlockMinutes(lastBlockMinutes))
+  ) {
+    throw new ApiHttpError(400, "INVALID_INPUT", `Block lengths must be whole minutes from 0 to ${MAX_BLOCK_MINUTES}`);
+  }
+
   return {
+    ...(firstBlockMinutes !== undefined ? { firstBlockMinutes } : {}),
+    ...(lastBlockMinutes !== undefined ? { lastBlockMinutes } : {}),
     startTimeMs: body.startTimeMs,
     durationMinutes: body.durationMinutes,
     ...(body.clockOffsetMs !== undefined

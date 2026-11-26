@@ -6,35 +6,24 @@ import { ApiClientError, createSession } from "@/lib/client/api";
 import { saveControllerKey } from "@/lib/client/storage";
 import { ArrowRightIcon, PlusIcon, QrIcon } from "@/components/Icons";
 
-function extractSessionId(rawInput: string): string {
+function extractStaffDestination(rawInput: string): string {
   const trimmed = rawInput.trim();
-  if (!trimmed) {
+  if (!trimmed) return "";
+
+  // Never navigate to the caller's origin or forward a controller credential.
+  // Accept the legacy bare session ID, or retain only the staff invite from a link.
+  if (/^[\w-]+$/.test(trimmed)) return `/s/${encodeURIComponent(trimmed)}`;
+  try {
+    const url = new URL(trimmed.startsWith("s/") ? `/${trimmed}` : trimmed, "https://examq.invalid");
+    if (url.protocol !== "https:" && url.protocol !== "http:") return "";
+    const match = url.pathname.match(/^\/s\/([\w-]+)\/?$/);
+    if (!match) return "";
+    const invite = url.searchParams.get("invite")?.trim();
+    const path = `/s/${encodeURIComponent(match[1])}`;
+    return invite ? `${path}?${new URLSearchParams({ invite })}` : path;
+  } catch {
     return "";
   }
-
-  try {
-    if (trimmed.includes("://")) {
-      const url = new URL(trimmed);
-      const match = url.pathname.match(/\/s\/([^/]+)/);
-      if (match?.[1]) {
-        return decodeURIComponent(match[1]);
-      }
-    }
-  } catch {
-    // Fall through to path parsing
-  }
-
-  const withoutQuery = trimmed.split("?")[0]?.split("#")[0] ?? "";
-  const pathMatch = withoutQuery.match(/(?:^|\/)s\/([^/]+)\/?$/);
-  if (pathMatch?.[1]) {
-    try {
-      return decodeURIComponent(pathMatch[1]);
-    } catch {
-      return pathMatch[1];
-    }
-  }
-
-  return withoutQuery.replace(/^\/+|\/+$/g, "");
 }
 
 export default function HomePage() {
@@ -70,13 +59,13 @@ export default function HomePage() {
 
   const handleJoinSession = (e: FormEvent) => {
     e.preventDefault();
-    const extracted = extractSessionId(joinInput);
-    if (!extracted) {
+    const destination = extractStaffDestination(joinInput);
+    if (!destination) {
       setJoinError("Enter a session code or link.");
       return;
     }
     setJoinError(null);
-    router.push(`/s/${encodeURIComponent(extracted)}`);
+    router.push(destination);
   };
 
   return (
@@ -159,7 +148,7 @@ export default function HomePage() {
               Join Session
             </h2>
             <p className="text-sm text-slate-500">
-              Code or link · no account
+              Open your proctor’s QR link, or paste it here.
             </p>
           </div>
 
@@ -182,7 +171,7 @@ export default function HomePage() {
                   setJoinError(null);
                 }
               }}
-              placeholder="Code or /s/link"
+              placeholder="Paste staff invitation link"
               className="min-h-[46px] w-full rounded-full border border-slate-200 bg-slate-50/70 px-4 py-2 text-sm font-mono text-slate-900 placeholder:font-sans placeholder:text-slate-400 focus:border-slate-900 focus:bg-white focus:outline-none"
             />
 

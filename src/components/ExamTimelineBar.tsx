@@ -1,5 +1,6 @@
 "use client";
 
+import { getExamBlockMinutes, MS_PER_MINUTE } from "@/lib/domain/window";
 import type { ExamConfig, WindowStatus } from "@/lib/domain/types";
 
 interface ExamTimelineBarProps {
@@ -28,9 +29,10 @@ export function ExamTimelineBar({
     );
   }
 
-  const totalMs = Math.max(1, examConfig.durationMinutes * 60_000);
-  const startLockPct = Math.min(100, (30 * 60_000 * 100) / totalMs);
-  const endLockPct = Math.min(100 - startLockPct, (20 * 60_000 * 100) / totalMs);
+  const { first, last } = getExamBlockMinutes(examConfig);
+  const totalMs = Math.max(1, examConfig.durationMinutes * MS_PER_MINUTE);
+  const startLockPct = Math.min(100, (first * MS_PER_MINUTE * 100) / totalMs);
+  const endLockPct = Math.min(100 - startLockPct, (last * MS_PER_MINUTE * 100) / totalMs);
   const openPct = Math.max(0, 100 - startLockPct - endLockPct);
 
   const elapsedMs = effectiveNowMs - examConfig.startTimeMs;
@@ -45,7 +47,7 @@ export function ExamTimelineBar({
 
   return (
     <div
-      aria-label="Exam bathroom window timeline"
+      aria-label={`Exam bathroom window timeline: first ${first} minutes blocked, final ${last} minutes blocked`}
       className={`relative flex items-center overflow-hidden rounded-full bg-slate-200/80 ${
         compact ? "h-2 w-24 sm:w-36" : "h-2.5 w-full"
       }`}
@@ -53,7 +55,7 @@ export function ExamTimelineBar({
       <div
         style={{ width: `${startLockPct}%` }}
         className="h-full bg-amber-300/80"
-        title="First 30m locked"
+        title={`First ${first}m locked`}
       />
       <div
         style={{ width: `${openPct}%` }}
@@ -63,7 +65,7 @@ export function ExamTimelineBar({
       <div
         style={{ width: `${endLockPct}%` }}
         className="h-full bg-rose-300/80"
-        title="Last 20m locked"
+        title={`Last ${last}m locked`}
       />
       <span
         style={{ left: `calc(${progressPct}% - 3px)` }}

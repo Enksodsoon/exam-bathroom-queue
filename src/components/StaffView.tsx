@@ -95,12 +95,12 @@ export function StaffView({
       ? submitSuccessState.text
       : null;
 
-  const windowMeta = describeWindowStatus(snapshot.windowStatus);
+  const windowMeta = describeWindowStatus(snapshot.windowStatus, snapshot.examConfig);
   const isAllowed = snapshot.windowStatus === "ALLOWED";
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (submittingRef.current) {
+    if (submittingRef.current || syncStale) {
       return;
     }
     const trimmed = studentNumber.trim();
@@ -149,7 +149,9 @@ export function StaffView({
       if (err instanceof ApiClientError) {
         setSubmitErrorState({
           clearedSeq: currentClearedSeq,
-          text: err.message,
+          text: err.windowStatus && err.code === "OUTSIDE_TIME_WINDOW"
+            ? describeWindowStatus(err.windowStatus, snapshot.examConfig).description
+            : err.message,
         });
       } else {
         setSubmitErrorState({
@@ -265,7 +267,7 @@ export function StaffView({
 
       {/* Alert Telemetry & Floating Next-Up Spotlight */}
       <AlertBanner
-        activeAlert={alert.activeAlert}
+        activeAlert={syncStale ? null : alert.activeAlert}
         muted={alert.muted}
         audioAlertCount={alert.audioAlertCount}
         vibrateAlertCount={alert.vibrateAlertCount}
@@ -280,6 +282,17 @@ export function StaffView({
         aria-label="Submit Student to Bathroom Queue"
         className="min-w-0 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs"
       >
+        {syncStale && (
+          <p
+            id="staff-reconnect-help"
+            data-testid="staff-reconnect-help"
+            role="status"
+            className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+          >
+            <strong>Reconnecting. New submissions are paused.</strong>{" "}
+            The queue below is the last synced view. Your entry stays here while this page is open.
+          </p>
+        )}
         {!isAllowed && (
           <div
             id="staff-window-block-notice"
@@ -352,9 +365,11 @@ export function StaffView({
             />
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || syncStale}
               aria-label="Submit Student"
-              aria-describedby={!isAllowed ? "staff-window-block-notice" : undefined}
+              aria-describedby={
+                syncStale ? "staff-reconnect-help" : !isAllowed ? "staff-window-block-notice" : undefined
+              }
               className={`inline-flex min-h-[50px] items-center justify-center gap-2 rounded-full px-7 py-2.5 text-sm font-semibold text-white transition focus:ring-2 focus:ring-slate-400 focus:outline-none disabled:opacity-50 ${
                 isAllowed
                   ? "bg-slate-900 hover:bg-slate-800"

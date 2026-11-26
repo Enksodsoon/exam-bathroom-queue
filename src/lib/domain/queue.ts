@@ -64,13 +64,7 @@ function cloneExamConfig(config: ExamConfig | null): ExamConfig | null {
   if (!config) {
     return null;
   }
-  return {
-    startTimeMs: config.startTimeMs,
-    durationMinutes: config.durationMinutes,
-    ...(config.clockOffsetMs !== undefined
-      ? { clockOffsetMs: config.clockOffsetMs }
-      : {}),
-  };
+  return { ...config };
 }
 
 function cloneEntry(entry: QueueEntry): QueueEntry {
@@ -301,9 +295,14 @@ export function updateExamConfig(
     );
   }
 
+  // Older clients can save the timer without resetting already-saved block lengths.
+  const firstBlockMinutes = input.firstBlockMinutes ?? session.examConfig?.firstBlockMinutes;
+  const lastBlockMinutes = input.lastBlockMinutes ?? session.examConfig?.lastBlockMinutes;
   const nextConfig: ExamConfig = {
     startTimeMs: input.startTimeMs,
     durationMinutes: input.durationMinutes,
+    ...(firstBlockMinutes !== undefined ? { firstBlockMinutes } : {}),
+    ...(lastBlockMinutes !== undefined ? { lastBlockMinutes } : {}),
     clockOffsetMs: input.clockOffsetMs ?? 0,
   };
 

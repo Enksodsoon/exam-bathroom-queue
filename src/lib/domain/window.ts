@@ -10,6 +10,22 @@ export const FIRST_BLOCK_MINUTES = 30;
 export const LAST_BLOCK_MINUTES = 20;
 export const FIRST_BLOCK_MS = FIRST_BLOCK_MINUTES * MS_PER_MINUTE;
 export const LAST_BLOCK_MS = LAST_BLOCK_MINUTES * MS_PER_MINUTE;
+export const MAX_BLOCK_MINUTES = 1440;
+
+export function isValidExamBlockMinutes(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) &&
+    value >= 0 && value <= MAX_BLOCK_MINUTES;
+}
+
+export function getExamBlockMinutes(
+  config?: Pick<ExamConfig, "firstBlockMinutes" | "lastBlockMinutes"> | null,
+) {
+  return {
+    first: config?.firstBlockMinutes ?? FIRST_BLOCK_MINUTES,
+    last: config?.lastBlockMinutes ?? LAST_BLOCK_MINUTES,
+  };
+}
+
 export const MAX_VALID_DATE_MS = 8.64e15;
 
 export function getExamWindowBounds(config: ExamConfig): ExamWindowBounds {
@@ -42,10 +58,17 @@ export function getExamWindowBounds(config: ExamConfig): ExamWindowBounds {
     );
   }
 
+  for (const value of [config.firstBlockMinutes, config.lastBlockMinutes]) {
+    if (value !== undefined && !isValidExamBlockMinutes(value)) {
+      throw new DomainError("INVALID_INPUT", `Block lengths must be whole minutes from 0 to ${MAX_BLOCK_MINUTES}`);
+    }
+  }
+
+  const { first, last } = getExamBlockMinutes(config);
   const startMs = config.startTimeMs;
   const endMs = startMs + config.durationMinutes * MS_PER_MINUTE;
-  const allowStartMs = startMs + FIRST_BLOCK_MS;
-  const allowEndMs = endMs - LAST_BLOCK_MS;
+  const allowStartMs = startMs + first * MS_PER_MINUTE;
+  const allowEndMs = endMs - last * MS_PER_MINUTE;
 
   if (
     !Number.isFinite(endMs) ||
