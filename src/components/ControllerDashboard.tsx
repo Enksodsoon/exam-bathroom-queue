@@ -23,6 +23,20 @@ import {
 } from "@/lib/client/format";
 import type { UseNextStudentAlertResult } from "@/lib/client/useNextStudentAlert";
 import { AlertBanner } from "./AlertBanner";
+import { ExamTimelineBar } from "./ExamTimelineBar";
+import {
+  BellIcon,
+  BellOffIcon,
+  ClockIcon,
+  CloseIcon,
+  FemaleIcon,
+  MaleIcon,
+  PlusIcon,
+  QrIcon,
+  ResetIcon,
+  ShieldIcon,
+  UsersIcon,
+} from "./Icons";
 import { QrShareCard } from "./QrShareCard";
 import { QueueColumn } from "./QueueColumn";
 
@@ -43,6 +57,8 @@ interface ConfigDraft {
   offsetMinutes: string;
 }
 
+type ActiveDrawer = "timer" | "qr" | "staff" | null;
+
 export function ControllerDashboard({
   sessionId,
   controllerKey,
@@ -52,6 +68,7 @@ export function ControllerDashboard({
   alert,
   onMutationSnapshot,
 }: ControllerDashboardProps) {
+  const [activeDrawer, setActiveDrawer] = useState<ActiveDrawer>(null);
   const [configDraft, setConfigDraft] = useState<ConfigDraft | null>(null);
   const [savingConfig, setSavingConfig] = useState(false);
   const savingConfigRef = useRef(false);
@@ -107,13 +124,13 @@ export function ControllerDashboard({
 
   if (!snapshot) {
     return (
-      <div className="mx-auto max-w-5xl space-y-3 rounded-xl border border-slate-200 bg-white p-6 text-center text-sm break-words [overflow-wrap:anywhere] text-slate-600">
-        <p>Loading controller dashboard for session {sessionId}...</p>
+      <div className="mx-auto max-w-4xl space-y-3 rounded-3xl border border-slate-200/90 bg-white p-8 text-center text-sm break-words [overflow-wrap:anywhere] text-slate-500 shadow-xs">
+        <p className="font-mono text-xs">Loading controller {sessionId}...</p>
         {syncError && (
           <div
             role="alert"
             data-testid="initial-sync-error"
-            className="min-w-0 max-w-full rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs break-words [overflow-wrap:anywhere] text-amber-900"
+            className="min-w-0 max-w-full rounded-2xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs break-words [overflow-wrap:anywhere] text-amber-900"
           >
             Sync warning: {syncError} (retrying automatically)
           </div>
@@ -184,7 +201,7 @@ export function ControllerDashboard({
       setConfigMessageState({
         clearedSeq: currentClearedSeq,
         tone: "error",
-        text: "Please enter a valid exam start time.",
+        text: "Enter a valid start time.",
       });
       return;
     }
@@ -194,7 +211,7 @@ export function ControllerDashboard({
       setConfigMessageState({
         clearedSeq: currentClearedSeq,
         tone: "error",
-        text: "Exam duration must be at least 1 minute.",
+        text: "Duration must be ≥ 1 min.",
       });
       return;
     }
@@ -204,7 +221,7 @@ export function ControllerDashboard({
       setConfigMessageState({
         clearedSeq: currentClearedSeq,
         tone: "error",
-        text: "Clock offset minutes must be a valid number.",
+        text: "Offset must be a number.",
       });
       return;
     }
@@ -225,7 +242,7 @@ export function ControllerDashboard({
         setConfigMessageState({
           clearedSeq: res.snapshot.clearedSeq,
           tone: "success",
-          text: "Exam configuration saved.",
+          text: "Timer saved.",
         });
       });
     } catch (err) {
@@ -235,7 +252,7 @@ export function ControllerDashboard({
         text:
           err instanceof ApiClientError
             ? err.message
-            : "Failed to save exam configuration.",
+            : "Failed to save timer.",
       });
     } finally {
       savingConfigRef.current = false;
@@ -253,7 +270,7 @@ export function ControllerDashboard({
       setStudentMessageState({
         clearedSeq: currentClearedSeq,
         tone: "error",
-        text: "Please enter a student number.",
+        text: "Enter a student number.",
       });
       return;
     }
@@ -283,7 +300,7 @@ export function ControllerDashboard({
         setStudentMessageState({
           clearedSeq: res.snapshot.clearedSeq,
           tone: "success",
-          text: `Added ${sexToSubmit === "M" ? "Male" : "Female"} #${res.entry.studentNumber}${res.entry.override ? " (Override)" : ""}.`,
+          text: `${sexToSubmit === "M" ? "♂" : "♀"} #${res.entry.studentNumber} added${res.entry.override ? " (Override)" : ""}`,
         });
       });
     } catch (err) {
@@ -378,7 +395,7 @@ export function ControllerDashboard({
         setConfirmingClear(false);
         setClearMessage({
           tone: "success",
-          text: "Session cleared across all connected clients.",
+          text: "Session cleared.",
         });
       });
     } catch (err) {
@@ -395,143 +412,293 @@ export function ControllerDashboard({
     }
   };
 
+  const toggleDrawer = (drawer: Exclude<ActiveDrawer, null>) => {
+    setActiveDrawer((prev) => (prev === drawer ? null : drawer));
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <header className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0 max-w-full space-y-1">
-            <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
-              <h1 className="text-xl font-bold text-slate-900">
-                Controller Dashboard
-              </h1>
-              <span className="rounded-full bg-slate-900 px-2.5 py-0.5 text-xs font-semibold text-white">
-                Controller
-              </span>
-              <span className="max-w-full rounded-full bg-slate-100 px-2.5 py-0.5 font-mono text-xs font-semibold break-all text-slate-700">
-                {sessionId}
-              </span>
+    <div className="space-y-4">
+      {/* Slim Focus-First Top Bar */}
+      <header className="rounded-3xl border border-slate-200/90 bg-white px-4 py-2.5 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+            <span
+              data-testid="window-status-badge"
+              data-window-status={snapshot.windowStatus}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${windowBadgeClasses(
+                windowMeta.tone,
+              )}`}
+            >
               <span
-                data-testid="window-status-badge"
-                data-window-status={snapshot.windowStatus}
-                className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${windowBadgeClasses(
-                  windowMeta.tone,
-                )}`}
-              >
-                {windowMeta.label}
-              </span>
-            </div>
-            <p className="text-sm text-slate-600">
-              Effective Exam Time:{" "}
-              <span className="font-mono font-medium text-slate-900">
-                {formatTimeOnly(snapshot.effectiveNowMs)}
-              </span>{" "}
-              · Staff Connected:{" "}
-              <span className="font-semibold text-slate-900">
+                className={`h-2 w-2 rounded-full ${
+                  snapshot.windowStatus === "ALLOWED"
+                    ? "bg-emerald-500"
+                    : "bg-amber-500"
+                }`}
+              />
+              {windowMeta.label}
+            </span>
+
+            <ExamTimelineBar
+              examConfig={snapshot.examConfig}
+              effectiveNowMs={snapshot.effectiveNowMs}
+              windowStatus={snapshot.windowStatus}
+              compact
+            />
+
+            <span className="font-mono text-xs text-slate-500 tabular-nums">
+              {formatTimeOnly(snapshot.effectiveNowMs)}
+            </span>
+
+            {lastSyncedAtMs !== null && (
+              <span
+                title="Live Sync"
+                className="h-2 w-2 rounded-full bg-emerald-500"
+              />
+            )}
+          </div>
+
+          {/* Single-Tap Icon Triggers */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => toggleDrawer("timer")}
+              aria-expanded={activeDrawer === "timer"}
+              aria-label="Exam Timer Settings"
+              title="Exam Timer Settings"
+              className={`inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition ${
+                activeDrawer === "timer"
+                  ? "bg-slate-900 text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              <ClockIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">Timer</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => toggleDrawer("qr")}
+              aria-expanded={activeDrawer === "qr"}
+              aria-label="Share QR Code"
+              title="Share QR Code"
+              className={`inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition ${
+                activeDrawer === "qr"
+                  ? "bg-slate-900 text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              <QrIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">QR</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => toggleDrawer("staff")}
+              aria-expanded={activeDrawer === "staff"}
+              aria-label="Connected Staff"
+              title="Connected Staff"
+              className={`inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition ${
+                activeDrawer === "staff"
+                  ? "bg-slate-900 text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              <UsersIcon className="h-4 w-4" />
+              <span className="font-mono tabular-nums">
                 {snapshot.staff.length}
               </span>
-              {lastSyncedAtMs !== null ? " · Live Sync" : ""}
-            </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={alert.toggleMute}
+              aria-pressed={alert.muted}
+              aria-label={alert.muted ? "Unmute Alerts" : "Mute Alerts"}
+              title={alert.muted ? "Unmute Alerts" : "Mute Alerts"}
+              className={`inline-flex h-11 w-11 items-center justify-center rounded-full transition ${
+                alert.muted
+                  ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              {alert.muted ? (
+                <BellOffIcon className="h-4 w-4" />
+              ) : (
+                <BellIcon className="h-4 w-4" />
+              )}
+            </button>
+
+            {!confirmingClear ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmingClear(true);
+                  setClearMessage(null);
+                }}
+                aria-label="Clear Session"
+                title="Clear Session"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-rose-50 text-rose-600 transition hover:bg-rose-100"
+              >
+                <ResetIcon className="h-4 w-4" />
+              </button>
+            ) : (
+              <div className="flex items-center gap-1 rounded-full bg-rose-50 p-1">
+                <button
+                  type="button"
+                  disabled={clearingSession}
+                  onClick={() => {
+                    void handleClearSession();
+                  }}
+                  className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-rose-600 px-3.5 text-xs font-semibold text-white transition hover:bg-rose-700 disabled:opacity-50"
+                >
+                  {clearingSession ? "..." : "Confirm Clear"}
+                </button>
+                <button
+                  type="button"
+                  disabled={clearingSession}
+                  onClick={() => setConfirmingClear(false)}
+                  aria-label="Cancel"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-600 hover:bg-slate-100"
+                >
+                  <CloseIcon className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
         {syncError && (
           <div
             role="status"
-            className="mt-3 min-w-0 max-w-full rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs break-words [overflow-wrap:anywhere] text-amber-900"
+            className="mt-2.5 min-w-0 max-w-full rounded-2xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs break-words [overflow-wrap:anywhere] text-amber-900"
           >
             Sync warning: {syncError} (retrying automatically)
           </div>
         )}
+
+        {clearMessage && (
+          <div
+            role={clearMessage.tone === "error" ? "alert" : "status"}
+            className={`mt-2.5 min-w-0 max-w-full rounded-2xl border px-3 py-1.5 text-xs font-medium break-words [overflow-wrap:anywhere] ${
+              clearMessage.tone === "error"
+                ? "border-rose-200 bg-rose-50 text-rose-800"
+                : "border-emerald-200 bg-emerald-50 text-emerald-800"
+            }`}
+          >
+            {clearMessage.text}
+          </div>
+        )}
       </header>
 
-      {/* Alert Banner & Share QR Card */}
-      <AlertBanner
-        activeAlert={alert.activeAlert}
-        muted={alert.muted}
-        audioAlertCount={alert.audioAlertCount}
-        vibrateAlertCount={alert.vibrateAlertCount}
-        lastAlertSeq={alert.lastAlertSeq}
-        onToggleMute={alert.toggleMute}
-        onDismiss={alert.dismissAlert}
-      />
-
-      <QrShareCard sessionId={sessionId} />
-
-      {/* Exam Time-Window Config + Controller Override Add Student */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Exam Configuration */}
+      {/* Top-Bar Drawers (Timer / QR / Staff) */}
+      {activeDrawer === "timer" && (
         <section
           aria-label="Exam Time-Window Configuration"
-          className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5"
+          className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs"
         >
-          <h2 className="text-base font-semibold text-slate-900">
-            Exam Time-Window Settings
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Staff submissions are permitted after the first 30 minutes and
-            before the last 20 minutes.
-          </p>
-
-          <div
-            className={`mt-3 min-w-0 max-w-full rounded-lg border px-3 py-2 text-xs font-medium break-words [overflow-wrap:anywhere] ${windowBadgeClasses(
-              windowMeta.tone,
-            )}`}
-          >
-            <span className="font-bold">{windowMeta.label}:</span>{" "}
-            {windowMeta.description}
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <ClockIcon className="h-4 w-4 text-slate-500" />
+              <h2 className="text-sm font-semibold text-slate-900">
+                Exam Timer
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveDrawer(null)}
+              aria-label="Close Timer"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            >
+              <CloseIcon className="h-4 w-4" />
+            </button>
           </div>
+
+          <ExamTimelineBar
+            examConfig={snapshot.examConfig}
+            effectiveNowMs={snapshot.effectiveNowMs}
+            windowStatus={snapshot.windowStatus}
+          />
 
           <form
             onSubmit={(e) => {
               void handleSaveConfig(e);
             }}
-            className="mt-4 space-y-4"
+            className="mt-4 space-y-3"
             noValidate
           >
-            <div className="space-y-1.5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <label
-                  htmlFor="exam-start-time"
-                  className="text-sm font-medium text-slate-800"
-                >
-                  Exam Start Time
-                </label>
-                <button
-                  type="button"
-                  onClick={() =>
-                    updateDraft({
-                      startLocal: toDateTimeLocalValue(snapshot.serverNowMs),
-                      exactStartMs: snapshot.serverNowMs,
-                    })
-                  }
-                  className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-100"
-                >
-                  Set Start = Now
-                </button>
-              </div>
-              <input
-                id="exam-start-time"
-                name="startTime"
-                type="datetime-local"
-                value={activeConfig.startLocal}
-                onChange={(e) =>
+            {/* Quick Presets */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                aria-label="Set Start = Now"
+                onClick={() =>
                   updateDraft({
-                    startLocal: e.target.value,
-                    exactStartMs: null,
+                    startLocal: toDateTimeLocalValue(snapshot.serverNowMs),
+                    exactStartMs: snapshot.serverNowMs,
                   })
                 }
-                className="min-h-[44px] w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/20 focus:outline-none"
-              />
+                className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-emerald-500/12 px-3.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-500/20"
+              >
+                Start Now
+              </button>
+              {[90, 120, 180].map((mins) => (
+                <button
+                  key={mins}
+                  type="button"
+                  onClick={() =>
+                    updateDraft({ durationMinutes: String(mins) })
+                  }
+                  className={`inline-flex min-h-[44px] items-center justify-center rounded-full border px-3.5 text-xs font-semibold transition ${
+                    activeConfig.durationMinutes === String(mins)
+                      ? "border-slate-900 bg-slate-900 text-white"
+                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  {mins}m
+                </button>
+              ))}
+              {[-35, 0, 35, 105].map((mins) => (
+                <button
+                  key={mins}
+                  type="button"
+                  onClick={() => updateDraft({ offsetMinutes: String(mins) })}
+                  className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-3 text-xs font-mono font-medium text-slate-700 hover:bg-slate-100"
+                >
+                  {mins > 0 ? `+${mins}m` : `${mins}m`}
+                </button>
+              ))}
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div>
+                <label
+                  htmlFor="exam-start-time"
+                  className="mb-1 block text-[11px] font-medium text-slate-500"
+                >
+                  Start
+                </label>
+                <input
+                  id="exam-start-time"
+                  name="startTime"
+                  type="datetime-local"
+                  value={activeConfig.startLocal}
+                  onChange={(e) =>
+                    updateDraft({
+                      startLocal: e.target.value,
+                      exactStartMs: null,
+                    })
+                  }
+                  className="min-h-[44px] w-full rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-1.5 text-xs text-slate-900 focus:border-slate-900 focus:bg-white focus:outline-none"
+                />
+              </div>
+
+              <div>
                 <label
                   htmlFor="exam-duration-minutes"
-                  className="text-sm font-medium text-slate-800"
+                  className="mb-1 block text-[11px] font-medium text-slate-500"
                 >
-                  Duration (minutes)
+                  Duration (min)
                 </label>
                 <input
                   id="exam-duration-minutes"
@@ -543,16 +710,16 @@ export function ControllerDashboard({
                   onChange={(e) =>
                     updateDraft({ durationMinutes: e.target.value })
                   }
-                  className="min-h-[44px] w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/20 focus:outline-none"
+                  className="min-h-[44px] w-full rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-1.5 font-mono text-xs text-slate-900 focus:border-slate-900 focus:bg-white focus:outline-none"
                 />
               </div>
 
-              <div className="space-y-1.5">
+              <div>
                 <label
                   htmlFor="exam-clock-offset"
-                  className="text-sm font-medium text-slate-800"
+                  className="mb-1 block text-[11px] font-medium text-slate-500"
                 >
-                  Clock Offset (minutes)
+                  Offset (min)
                 </label>
                 <input
                   id="exam-clock-offset"
@@ -563,38 +730,21 @@ export function ControllerDashboard({
                   onChange={(e) =>
                     updateDraft({ offsetMinutes: e.target.value })
                   }
-                  className="min-h-[44px] w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/20 focus:outline-none"
+                  className="min-h-[44px] w-full rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-1.5 font-mono text-xs text-slate-900 focus:border-slate-900 focus:bg-white focus:outline-none"
                 />
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-medium text-slate-600">
-                Quick Clock Offset:
-              </span>
-              {[-35, 0, 35, 105].map((mins) => (
-                <button
-                  key={mins}
-                  type="button"
-                  onClick={() => updateDraft({ offsetMinutes: String(mins) })}
-                  className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-100"
-                >
-                  {mins > 0 ? `+${mins}m` : `${mins}m`}
-                </button>
-              ))}
-            </div>
-
             {showShortDurationWarning && (
-              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                Duration of 50 minutes or less has no allowed middle window
-                (first 30m + last 20m).
+              <p className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                Duration ≤ 50m leaves no open middle window (30m + 20m).
               </p>
             )}
 
             {configMessage && (
               <div
                 role={configMessage.tone === "error" ? "alert" : "status"}
-                className={`min-w-0 max-w-full rounded-lg border px-3 py-2 text-sm break-words [overflow-wrap:anywhere] ${
+                className={`min-w-0 max-w-full rounded-2xl border px-3 py-2 text-xs font-medium break-words [overflow-wrap:anywhere] ${
                   configMessage.tone === "error"
                     ? "border-rose-200 bg-rose-50 text-rose-800"
                     : "border-emerald-200 bg-emerald-50 text-emerald-800"
@@ -607,140 +757,187 @@ export function ControllerDashboard({
             <button
               type="submit"
               disabled={savingConfig}
-              className="inline-flex min-h-[44px] w-full items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-slate-900 px-6 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
             >
               {savingConfig ? "Saving..." : "Save Exam Config"}
             </button>
           </form>
         </section>
+      )}
 
-        {/* Controller Add / Override Student */}
+      {activeDrawer === "qr" && <QrShareCard sessionId={sessionId} />}
+
+      {activeDrawer === "staff" && (
         <section
-          aria-label="Controller Add Student"
-          className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5"
+          aria-label="Connected Staff"
+          className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs"
         >
-          <h2 className="text-base font-semibold text-slate-900">
-            Controller Add Student &amp; Override
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Add a student directly or enable Controller Override to bypass the
-            exam time-window check when adding or marking Enter Bathroom.
-          </p>
-
-          <form
-            onSubmit={(e) => {
-              void handleAddStudent(e);
-            }}
-            className="mt-4 space-y-4"
-            noValidate
-          >
-            <div className="space-y-1.5">
-              <span className="block text-sm font-medium text-slate-800">
-                Student Sex
-              </span>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  aria-pressed={addSex === "M"}
-                  onClick={() => setAddSex("M")}
-                  className={`inline-flex min-h-[44px] items-center justify-center rounded-lg border px-4 py-2 text-sm font-semibold transition ${
-                    addSex === "M"
-                      ? "border-sky-600 bg-sky-600 text-white"
-                      : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
-                  }`}
-                >
-                  Male
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={addSex === "F"}
-                  onClick={() => setAddSex("F")}
-                  className={`inline-flex min-h-[44px] items-center justify-center rounded-lg border px-4 py-2 text-sm font-semibold transition ${
-                    addSex === "F"
-                      ? "border-fuchsia-600 bg-fuchsia-600 text-white"
-                      : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
-                  }`}
-                >
-                  Female
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label
-                htmlFor="controller-student-number"
-                className="block text-sm font-medium text-slate-800"
-              >
-                Student Number
-              </label>
-              <input
-                id="controller-student-number"
-                name="controllerStudentNumber"
-                type="text"
-                maxLength={32}
-                value={addStudentNumber}
-                onChange={(e) => {
-                  setAddStudentNumber(e.target.value);
-                  if (studentMessage) {
-                    setStudentMessageState(null);
-                  }
-                }}
-                placeholder="e.g. 2001"
-                className="min-h-[44px] w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/20 focus:outline-none"
-              />
-            </div>
-
-            <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-900">
-              <input
-                type="checkbox"
-                checked={overrideEnabled}
-                onChange={(e) => setOverrideEnabled(e.target.checked)}
-                className="h-7 w-7 shrink-0 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
-              />
-              <span>
-                Controller Override (allow adding &amp; entering outside time
-                window)
-              </span>
-            </label>
-
-            {studentMessage && (
-              <div
-                role={studentMessage.tone === "error" ? "alert" : "status"}
-                data-testid="controller-add-message"
-                className={`min-w-0 max-w-full rounded-lg border px-3 py-2 text-sm break-words [overflow-wrap:anywhere] ${
-                  studentMessage.tone === "error"
-                    ? "border-rose-200 bg-rose-50 text-rose-800"
-                    : "border-emerald-200 bg-emerald-50 text-emerald-800"
-                }`}
-              >
-                {studentMessage.text}
-              </div>
-            )}
-
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-slate-900">
+              Connected Staff ({snapshot.staff.length})
+            </h2>
             <button
-              type="submit"
-              disabled={submittingStudent}
-              className="inline-flex min-h-[44px] w-full items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
+              type="button"
+              onClick={() => setActiveDrawer(null)}
+              aria-label="Close Staff List"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700"
             >
-              {submittingStudent ? "Adding..." : "Add Student"}
+              <CloseIcon className="h-4 w-4" />
             </button>
-          </form>
+          </div>
+          {snapshot.staff.length === 0 ? (
+            <p className="text-xs text-slate-500">
+              No roaming staff joined yet.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {snapshot.staff.map((member) => (
+                <span
+                  key={member.id}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-800"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  <span className="max-w-[160px] truncate">{member.label}</span>
+                  <span className="font-mono text-[11px] text-slate-400">
+                    {formatTimeOnly(member.joinedAt)}
+                  </span>
+                </span>
+              ))}
+            </div>
+          )}
         </section>
-      </div>
+      )}
+
+      {/* Alert Telemetry & Floating Spotlight */}
+      <AlertBanner
+        activeAlert={alert.activeAlert}
+        muted={alert.muted}
+        audioAlertCount={alert.audioAlertCount}
+        vibrateAlertCount={alert.vibrateAlertCount}
+        lastAlertSeq={alert.lastAlertSeq}
+        onToggleMute={alert.toggleMute}
+        onDismiss={alert.dismissAlert}
+        hideMuteControl
+      />
+
+      {/* Slim Inline Quick-Add Bar */}
+      <section
+        aria-label="Controller Add Student"
+        className="rounded-3xl border border-slate-200/90 bg-white p-3.5 shadow-xs"
+      >
+        <form
+          onSubmit={(e) => {
+            void handleAddStudent(e);
+          }}
+          className="flex flex-wrap items-center gap-2"
+          noValidate
+        >
+          <div className="flex items-center gap-1 rounded-full bg-slate-100 p-1">
+            <button
+              type="button"
+              aria-pressed={addSex === "M"}
+              aria-label="Male"
+              onClick={() => setAddSex("M")}
+              className={`inline-flex h-11 items-center gap-1 rounded-full px-3.5 text-xs font-semibold transition ${
+                addSex === "M"
+                  ? "bg-sky-600 text-white shadow-2xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <MaleIcon className="h-3.5 w-3.5" />
+              <span>M</span>
+            </button>
+            <button
+              type="button"
+              aria-pressed={addSex === "F"}
+              aria-label="Female"
+              onClick={() => setAddSex("F")}
+              className={`inline-flex h-11 items-center gap-1 rounded-full px-3.5 text-xs font-semibold transition ${
+                addSex === "F"
+                  ? "bg-rose-600 text-white shadow-2xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <FemaleIcon className="h-3.5 w-3.5" />
+              <span>F</span>
+            </button>
+          </div>
+
+          <label htmlFor="controller-student-number" className="sr-only">
+            Student Number
+          </label>
+          <input
+            id="controller-student-number"
+            name="controllerStudentNumber"
+            type="text"
+            maxLength={32}
+            value={addStudentNumber}
+            onChange={(e) => {
+              setAddStudentNumber(e.target.value);
+              if (studentMessage) {
+                setStudentMessageState(null);
+              }
+            }}
+            placeholder="Student #"
+            className="min-h-[44px] min-w-[120px] flex-1 rounded-full border border-slate-200 bg-slate-50/70 px-4 py-2 font-mono text-sm font-semibold text-slate-900 placeholder:font-sans placeholder:font-normal placeholder:text-slate-400 focus:border-slate-900 focus:bg-white focus:outline-none"
+          />
+
+          <button
+            type="button"
+            role="switch"
+            aria-checked={overrideEnabled}
+            aria-label="Controller Override"
+            title="Controller Override (bypass time window)"
+            onClick={() => setOverrideEnabled((prev) => !prev)}
+            className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition ${
+              overrideEnabled
+                ? "border-purple-300 bg-purple-100 text-purple-800"
+                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            <ShieldIcon className="h-3.5 w-3.5" />
+            <span>Override</span>
+          </button>
+
+          <button
+            type="submit"
+            disabled={submittingStudent}
+            aria-label="Add Student"
+            className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-full bg-slate-900 px-5 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
+          >
+            <PlusIcon className="h-4 w-4" />
+            <span>{submittingStudent ? "..." : "Add"}</span>
+          </button>
+        </form>
+
+        {studentMessage && (
+          <div
+            role={studentMessage.tone === "error" ? "alert" : "status"}
+            data-testid="controller-add-message"
+            className={`mt-2.5 min-w-0 max-w-full rounded-2xl border px-3.5 py-2 text-xs font-medium break-words [overflow-wrap:anywhere] ${
+              studentMessage.tone === "error"
+                ? "border-rose-200 bg-rose-50 text-rose-800"
+                : "border-emerald-200 bg-emerald-50 text-emerald-800"
+            }`}
+          >
+            {studentMessage.text}
+          </div>
+        )}
+      </section>
 
       {/* Queue Action Error Banner */}
       {queueError && (
         <div
           role="alert"
           data-testid="controller-queue-error"
-          className="min-w-0 max-w-full rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm font-medium break-words [overflow-wrap:anywhere] text-rose-900"
+          className="min-w-0 max-w-full rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-medium break-words [overflow-wrap:anywhere] text-rose-900"
         >
           {queueError}
         </div>
       )}
 
-      {/* Male & Female Queues */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {/* Focus-First Male & Female Queues */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <QueueColumn
           sex="M"
           entries={snapshot.entries}
@@ -767,101 +964,6 @@ export function ControllerDashboard({
             void handleReorder(entryId, direction);
           }}
         />
-      </div>
-
-      {/* Connected Staff Roster & Clear Session */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <section
-          aria-label="Connected Staff"
-          className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5"
-        >
-          <h2 className="text-base font-semibold text-slate-900">
-            Connected Staff ({snapshot.staff.length})
-          </h2>
-          {snapshot.staff.length === 0 ? (
-            <p className="mt-2 text-sm text-slate-500">
-              No roaming staff have joined yet. Share the link or QR code above.
-            </p>
-          ) : (
-            <ul className="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-200">
-              {snapshot.staff.map((member) => (
-                <li
-                  key={member.id}
-                  className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm"
-                >
-                  <span className="min-w-0 max-w-full font-medium break-words [overflow-wrap:anywhere] text-slate-900">
-                    {member.label}
-                  </span>
-                  <span className="text-xs text-slate-500">
-                    Joined {formatTimeOnly(member.joinedAt)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section
-          aria-label="End of Session Controls"
-          className="min-w-0 rounded-xl border border-rose-200 bg-white p-4 shadow-xs sm:p-5"
-        >
-          <h2 className="text-base font-semibold text-slate-900">
-            Clear Session
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Wipe all queued, active, and completed student entries across all
-            connected clients when the exam session finishes.
-          </p>
-
-          {clearMessage && (
-            <div
-              role={clearMessage.tone === "error" ? "alert" : "status"}
-              className={`mt-3 min-w-0 max-w-full rounded-lg border px-3 py-2 text-sm break-words [overflow-wrap:anywhere] ${
-                clearMessage.tone === "error"
-                  ? "border-rose-200 bg-rose-50 text-rose-800"
-                  : "border-emerald-200 bg-emerald-50 text-emerald-800"
-              }`}
-            >
-              {clearMessage.text}
-            </div>
-          )}
-
-          <div className="mt-4 flex flex-wrap gap-3">
-            {!confirmingClear ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setConfirmingClear(true);
-                  setClearMessage(null);
-                }}
-                className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-rose-300 bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700"
-              >
-                Clear Session
-              </button>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  disabled={clearingSession}
-                  onClick={() => {
-                    void handleClearSession();
-                  }}
-                  className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-rose-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-800 disabled:opacity-50"
-                >
-                  {clearingSession ? "Clearing..." : "Confirm Clear"}
-                </button>
-                <button
-                  type="button"
-                  disabled={clearingSession}
-                  onClick={() => setConfirmingClear(false)}
-                  className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 transition hover:bg-slate-100 disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-              </>
-            )}
-          </div>
-        </section>
       </div>
     </div>
   );

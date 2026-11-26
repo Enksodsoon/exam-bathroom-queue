@@ -121,6 +121,7 @@ test.describe('Tier 1 — Session Access & Role Separation (F-S1..F-S4)', () => 
     const ctrl = new ControllerPage(page);
     await ctrl.goto(created.sessionId, created.controllerKey);
 
+    await page.getByRole('button', { name: /share qr code/i }).click();
     const qr = Selectors.qrElement(page);
     await expect(qr).toBeVisible();
     const box = await qr.boundingBox();
@@ -333,6 +334,7 @@ test.describe('Tier 1 — Session Access & Role Separation (F-S1..F-S4)', () => 
     const ctrl = new ControllerPage(page);
     await ctrl.goto(created.sessionId, created.controllerKey);
     await expect(Selectors.clearSessionButton(page)).toBeVisible();
+    await page.getByRole('button', { name: /exam timer settings/i }).click();
     await expect(Selectors.saveConfigButton(page)).toBeVisible();
 
     const stored = await page.evaluate(() => JSON.stringify(sessionStorage));

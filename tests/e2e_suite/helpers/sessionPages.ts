@@ -65,6 +65,12 @@ export class ControllerPage {
 
   async getShareUrl(): Promise<string> {
     const el = Selectors.shareLinkTextOrInput(this.page);
+    if ((await el.count()) === 0 || !(await el.isVisible())) {
+      const qrToggle = this.page.getByRole('button', { name: /share qr code/i });
+      if ((await qrToggle.count()) > 0) {
+        await qrToggle.click();
+      }
+    }
     await expect(el).toBeVisible();
     const tag = await el.evaluate((node) => node.tagName.toLowerCase());
     if (tag === 'input') {
@@ -87,6 +93,12 @@ export class ControllerPage {
     clockOffsetMinutes?: number;
   }): Promise<void> {
     const startInput = Selectors.examStartInput(this.page);
+    if ((await startInput.count()) === 0 || !(await startInput.isVisible())) {
+      const timerToggle = this.page.getByRole('button', { name: /exam timer settings/i });
+      if ((await timerToggle.count()) > 0) {
+        await timerToggle.click();
+      }
+    }
     await startInput.fill(toDatetimeLocalValue(params.startTimeMs));
     await Selectors.examDurationInput(this.page).fill(
       String(params.durationMinutes),
@@ -230,7 +242,14 @@ export class ControllerPage {
   }
 
   async expectStaffListed(label: string): Promise<void> {
-    await expect(Selectors.staffListRegion(this.page)).toContainText(label);
+    const region = Selectors.staffListRegion(this.page);
+    if ((await region.count()) === 0 || !(await region.isVisible())) {
+      const staffToggle = this.page.getByRole('button', { name: /connected staff/i });
+      if ((await staffToggle.count()) > 0) {
+        await staffToggle.click();
+      }
+    }
+    await expect(region).toContainText(label);
   }
 
   async expectWindowStatus(pattern: RegExp): Promise<void> {

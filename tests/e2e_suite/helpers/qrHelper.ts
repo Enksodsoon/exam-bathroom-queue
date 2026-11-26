@@ -650,6 +650,12 @@ export async function verifyAndDecodeSessionQr(
   expectedSessionId: string,
   forbiddenControllerKey?: string,
 ): Promise<string> {
+  if ((await qrLocator.count()) === 0 || !(await qrLocator.isVisible())) {
+    const qrToggle = page.getByRole('button', { name: /share qr code/i });
+    if ((await qrToggle.count()) > 0) {
+      await qrToggle.click();
+    }
+  }
   const decoded = await decodeQrFromElement(qrLocator);
   let parsed: URL;
   try {

@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type Page } from "@playwright/test";
+﻿import { expect, test, type Browser, type Page } from "@playwright/test";
 
 interface ErrorRecorder {
   consoleErrors: string[];
@@ -69,7 +69,7 @@ async function createConfiguredControllerSession(
 
   await page.getByRole("button", { name: "Create Exam Session" }).click();
   await expect(
-    page.getByRole("heading", { name: "Controller Dashboard" }),
+    page.getByTestId("window-status-badge"),
   ).toBeVisible();
 
   await expect
@@ -84,6 +84,7 @@ async function createConfiguredControllerSession(
   );
   expect(storedKey).toBeTruthy();
 
+  await page.getByRole("button", { name: "Share QR Code" }).click();
   const qrSvg = page.locator("svg[role='img'][data-qr-url]");
   await expect(qrSvg).toBeVisible();
   const shareUrl = await qrSvg.getAttribute("data-qr-url");
@@ -92,11 +93,12 @@ async function createConfiguredControllerSession(
   expect(shareUrl).not.toContain("key=");
   expect(shareUrl).not.toContain(storedKey!);
 
+  await page.getByRole("button", { name: "Exam Timer Settings" }).click();
   await page.getByRole("button", { name: "Set Start = Now" }).click();
   await page.locator("#exam-duration-minutes").fill("120");
   await page.locator("#exam-clock-offset").fill(String(offsetMinutes));
   await page.getByRole("button", { name: "Save Exam Config" }).click();
-  await expect(page.getByText("Exam configuration saved.")).toBeVisible();
+  await expect(page.getByText("Timer saved.")).toBeVisible();
 
   return { sessionId, shareUrl: shareUrl! };
 }
@@ -134,24 +136,24 @@ async function openJoinedStaffPage(
 
   await page.goto(shareUrl);
   await expect(
-    page.getByRole("heading", { name: "Join as Roaming Staff" }),
+    page.getByRole("heading", { name: "Staff Check-In" }),
   ).toBeVisible();
   await assertResponsiveLayout(page);
 
   await page.getByRole("button", { name: "Join Session" }).click();
   await expect(
-    page.getByText("Please enter your name or label to join."),
+    page.getByText("Enter your name or hall label."),
   ).toBeVisible();
 
   await page.locator("#staff-label-input").fill("A".repeat(41));
   await page.getByRole("button", { name: "Join Session" }).click();
   await expect(
-    page.getByText("Name/label must be 40 characters or fewer."),
+    page.getByText("Max 40 characters."),
   ).toBeVisible();
 
   await page.locator("#staff-label-input").fill(staffLabel);
   await page.getByRole("button", { name: "Join Session" }).click();
-  await expect(page.getByText(`Signed in as ${staffLabel}`)).toBeVisible();
+  await expect(page.getByRole("button", { name: staffLabel })).toBeVisible();
 
   return {
     page,
@@ -195,20 +197,20 @@ test.describe("M3 Exam Bathroom Queue E2E", () => {
       await staff.page.locator("#staff-student-number").fill("M101");
       await staff.page.getByRole("button", { name: "Submit Student" }).click();
       await expect(
-        staff.page.getByText("Added Male #M101 to queue."),
+        staff.page.getByText(/#M101 added/),
       ).toBeVisible();
 
       await staff.page.locator("#staff-student-number").fill("M102");
       await staff.page.getByRole("button", { name: "Submit Student" }).click();
       await expect(
-        staff.page.getByText("Added Male #M102 to queue."),
+        staff.page.getByText(/#M102 added/),
       ).toBeVisible();
 
       await staff.page.getByRole("button", { name: "Female", exact: true }).click();
       await staff.page.locator("#staff-student-number").fill("F201");
       await staff.page.getByRole("button", { name: "Submit Student" }).click();
       await expect(
-        staff.page.getByText("Added Female #F201 to queue."),
+        staff.page.getByText(/#F201 added/),
       ).toBeVisible();
 
       // Controller sees all 3 without reload
@@ -294,7 +296,7 @@ test.describe("M3 Exam Bathroom Queue E2E", () => {
         await homePage.getByRole("button", { name: "Join Session" }).click();
         await expect(homePage).toHaveURL(new RegExp(`/s/${sessionId}$`));
         await expect(
-          homePage.getByRole("heading", { name: "Join as Roaming Staff" }),
+          homePage.getByRole("heading", { name: "Staff Check-In" }),
         ).toBeVisible();
         expect(homeErrors.consoleErrors).toEqual([]);
         expect(homeErrors.pageErrors).toEqual([]);
@@ -305,7 +307,7 @@ test.describe("M3 Exam Bathroom Queue E2E", () => {
       await page.goto("/");
       await page.getByRole("button", { name: "Create Exam Session" }).click();
       await expect(
-        page.getByRole("heading", { name: "Controller Dashboard" }),
+        page.getByTestId("window-status-badge"),
       ).toBeVisible();
       const secondSessionId = new URL(page.url()).pathname.replace(/^\/s\//, "");
       expect(secondSessionId).not.toBe(sessionId);
@@ -382,7 +384,7 @@ test.describe("M3 Exam Bathroom Queue E2E", () => {
       await expect(
         staff.page
           .getByTestId("next-student-alert")
-          .getByText("NEXT MALE: #M302"),
+          .getByText("#M302"),
       ).toBeVisible();
       await expect(telemetry).toHaveAttribute("data-audio-alert-count", "1");
       await expect(telemetry).toHaveAttribute("data-vibrate-alert-count", "1");
@@ -417,7 +419,7 @@ test.describe("M3 Exam Bathroom Queue E2E", () => {
       await expect(
         staff.page
           .getByTestId("next-student-alert")
-          .getByText("NEXT MALE: #M303"),
+          .getByText("#M303"),
       ).toBeVisible();
       await expect(telemetry).toHaveAttribute("data-audio-alert-count", "1");
       await expect(telemetry).toHaveAttribute("data-vibrate-alert-count", "1");
@@ -428,7 +430,7 @@ test.describe("M3 Exam Bathroom Queue E2E", () => {
 
       await expect(staff.page.getByTestId("next-student-alert")).toHaveCount(0);
       await expect(
-        staff.page.getByTestId("queue-column-M").getByText("No male students waiting."),
+        staff.page.getByTestId("queue-column-M").getByText("Empty queue"),
       ).toBeVisible();
       await expect(
         staff.page.getByTestId("occupancy-M").getByText("Vacant", { exact: true }),
@@ -484,8 +486,7 @@ test.describe("M3 Exam Bathroom Queue E2E", () => {
 
       // Controller enables override -> adds W101 and marks Enter Bathroom outside window
       await page
-        .getByLabel(/Controller Override/i)
-        .check();
+        .getByRole("switch", { name: /Controller Override/i }).click();
       await page.locator("#controller-student-number").fill("W101");
       await page.getByRole("button", { name: "Add Student" }).click();
       await expect(
@@ -526,7 +527,7 @@ test.describe("M3 Exam Bathroom Queue E2E", () => {
       await staff.page.locator("#staff-student-number").fill("W103");
       await staff.page.getByRole("button", { name: "Submit Student" }).click();
       await expect(
-        staff.page.getByText("Added Male #W103 to queue."),
+        staff.page.getByText(/#W103 added/),
       ).toBeVisible();
 
       await assertResponsiveLayout(page);

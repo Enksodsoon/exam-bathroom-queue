@@ -11,6 +11,16 @@ import {
 } from "@/lib/client/format";
 import type { UseNextStudentAlertResult } from "@/lib/client/useNextStudentAlert";
 import { AlertBanner } from "./AlertBanner";
+import { ExamTimelineBar } from "./ExamTimelineBar";
+import {
+  ArrowRightIcon,
+  BellIcon,
+  BellOffIcon,
+  FemaleIcon,
+  LockIcon,
+  MaleIcon,
+  UserBadgeIcon,
+} from "./Icons";
 import { QueueColumn } from "./QueueColumn";
 
 interface StaffViewProps {
@@ -51,13 +61,13 @@ export function StaffView({
 
   if (!snapshot) {
     return (
-      <div className="mx-auto max-w-4xl space-y-3 rounded-xl border border-slate-200 bg-white p-6 text-center text-sm break-words [overflow-wrap:anywhere] text-slate-600">
-        <p>Loading session {sessionId}...</p>
+      <div className="mx-auto max-w-3xl space-y-3 rounded-3xl border border-slate-200/90 bg-white p-8 text-center text-sm break-words [overflow-wrap:anywhere] text-slate-500 shadow-xs">
+        <p className="font-mono text-xs">Loading {sessionId}...</p>
         {syncError && (
           <div
             role="alert"
             data-testid="initial-sync-error"
-            className="min-w-0 max-w-full rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs break-words [overflow-wrap:anywhere] text-amber-900"
+            className="min-w-0 max-w-full rounded-2xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs break-words [overflow-wrap:anywhere] text-amber-900"
           >
             Sync warning: {syncError} (retrying automatically)
           </div>
@@ -88,7 +98,7 @@ export function StaffView({
     if (!trimmed) {
       setSubmitErrorState({
         clearedSeq: currentClearedSeq,
-        text: "Please enter a student number.",
+        text: "Enter a student number.",
       });
       setSubmitSuccessState(null);
       return;
@@ -96,7 +106,7 @@ export function StaffView({
     if (trimmed.length > MAX_STUDENT_NUM_LEN) {
       setSubmitErrorState({
         clearedSeq: currentClearedSeq,
-        text: `Student number must be ${MAX_STUDENT_NUM_LEN} characters or fewer.`,
+        text: `Max ${MAX_STUDENT_NUM_LEN} characters.`,
       });
       setSubmitSuccessState(null);
       return;
@@ -118,7 +128,7 @@ export function StaffView({
       setStudentNumber("");
       setSubmitSuccessState({
         clearedSeq: res.snapshot.clearedSeq,
-        text: `Added ${sex === "M" ? "Male" : "Female"} #${res.entry.studentNumber} to queue.`,
+        text: `${sex === "M" ? "♂" : "♀"} #${res.entry.studentNumber} added`,
       });
     } catch (err) {
       if (err instanceof ApiClientError) {
@@ -129,7 +139,7 @@ export function StaffView({
       } else {
         setSubmitErrorState({
           clearedSeq: currentClearedSeq,
-          text: "Failed to submit student. Please try again.",
+          text: "Failed to submit student.",
         });
       }
     } finally {
@@ -140,60 +150,88 @@ export function StaffView({
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <header className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+      {/* Slim Staff Top Bar */}
+      <header className="rounded-3xl border border-slate-200/90 bg-white px-4 py-3 shadow-xs">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0 max-w-full space-y-1">
-            <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
-              <h1 className="text-lg font-bold text-slate-900 sm:text-xl">
-                Exam Bathroom Queue
-              </h1>
-              <span className="max-w-full rounded-full bg-slate-100 px-2.5 py-0.5 font-mono text-xs font-semibold break-all text-slate-700">
-                {sessionId}
-              </span>
+          <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+            <span
+              data-testid="window-status-badge"
+              data-window-status={snapshot.windowStatus}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${windowBadgeClasses(
+                windowMeta.tone,
+              )}`}
+            >
               <span
-                data-testid="window-status-badge"
-                data-window-status={snapshot.windowStatus}
-                className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${windowBadgeClasses(
-                  windowMeta.tone,
-                )}`}
-              >
-                {windowMeta.label}
-              </span>
-            </div>
-            <p className="text-sm text-slate-600">
-              Signed in as{" "}
-              <span className="font-semibold break-words [overflow-wrap:anywhere] text-slate-900">
-                {staffIdentity.label}
-              </span>{" "}
-              · Exam Clock:{" "}
-              <span className="font-mono font-medium text-slate-800">
-                {formatTimeOnly(snapshot.effectiveNowMs)}
-              </span>
-              {lastSyncedAtMs !== null ? " · Live Sync" : ""}
-            </p>
+                className={`h-2 w-2 rounded-full ${
+                  isAllowed ? "bg-emerald-500" : "bg-amber-500"
+                }`}
+              />
+              {windowMeta.label}
+            </span>
+
+            <ExamTimelineBar
+              examConfig={snapshot.examConfig}
+              effectiveNowMs={snapshot.effectiveNowMs}
+              windowStatus={snapshot.windowStatus}
+              compact
+            />
+
+            <span className="font-mono text-xs text-slate-500 tabular-nums">
+              {formatTimeOnly(snapshot.effectiveNowMs)}
+            </span>
+            {lastSyncedAtMs !== null && (
+              <span
+                title="Live Sync"
+                className="h-2 w-2 rounded-full bg-emerald-500"
+              />
+            )}
           </div>
 
-          <button
-            type="button"
-            onClick={onChangeName}
-            className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 transition hover:bg-slate-100"
-          >
-            Change Name
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={alert.toggleMute}
+              aria-pressed={alert.muted}
+              aria-label={alert.muted ? "Unmute Alerts" : "Mute Alerts"}
+              title={alert.muted ? "Unmute Alerts" : "Mute Alerts"}
+              className={`inline-flex h-11 w-11 items-center justify-center rounded-full transition ${
+                alert.muted
+                  ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              {alert.muted ? (
+                <BellOffIcon className="h-4 w-4" />
+              ) : (
+                <BellIcon className="h-4 w-4" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={onChangeName}
+              title="Switch Staff"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+            >
+              <UserBadgeIcon className="h-3.5 w-3.5 text-slate-500" />
+              <span className="max-w-[120px] truncate">
+                {staffIdentity.label}
+              </span>
+            </button>
+          </div>
         </div>
 
         {syncError && (
           <div
             role="status"
-            className="mt-3 min-w-0 max-w-full rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs break-words [overflow-wrap:anywhere] text-amber-900"
+            className="mt-2.5 min-w-0 max-w-full rounded-2xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs break-words [overflow-wrap:anywhere] text-amber-900"
           >
             Sync warning: {syncError} (retrying automatically)
           </div>
         )}
       </header>
 
-      {/* Alert Banner & Mute Control */}
+      {/* Alert Telemetry & Floating Next-Up Spotlight */}
       <AlertBanner
         activeAlert={alert.activeAlert}
         muted={alert.muted}
@@ -202,31 +240,24 @@ export function StaffView({
         lastAlertSeq={alert.lastAlertSeq}
         onToggleMute={alert.toggleMute}
         onDismiss={alert.dismissAlert}
+        hideMuteControl
       />
 
-      {/* Quick Submit Card */}
+      {/* Icon-First Quick Submit Card */}
       <section
         aria-label="Submit Student to Bathroom Queue"
-        className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5"
+        className="min-w-0 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs"
       >
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-semibold text-slate-900">
-            Add Student to Queue
-          </h2>
-          <span className="text-xs text-slate-500">
-            FIFO queue by sex · 1 student per bathroom at a time
-          </span>
-        </div>
-
         {!isAllowed && (
           <div
             data-testid="staff-window-block-notice"
-            className="mb-4 min-w-0 max-w-full rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm break-words [overflow-wrap:anywhere] text-rose-900"
+            className="mb-4 flex min-w-0 max-w-full items-center gap-2.5 rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-2.5 text-xs font-medium break-words [overflow-wrap:anywhere] text-rose-900"
           >
-            <span className="font-semibold">
-              Submissions Blocked ({windowMeta.label}):
-            </span>{" "}
-            {windowMeta.description}
+            <LockIcon className="h-4 w-4 shrink-0 text-rose-600" />
+            <span>
+              <strong className="font-semibold">{windowMeta.label}:</strong>{" "}
+              {windowMeta.description}
+            </span>
           </div>
         )}
 
@@ -237,43 +268,37 @@ export function StaffView({
           className="space-y-4"
           noValidate
         >
-          <div className="space-y-1.5">
-            <span className="block text-sm font-medium text-slate-800">
-              Student Sex
-            </span>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                aria-pressed={sex === "M"}
-                onClick={() => setSex("M")}
-                className={`inline-flex min-h-[44px] items-center justify-center rounded-lg border px-4 py-2 text-base font-semibold transition focus:ring-2 focus:ring-sky-500 focus:outline-none ${
-                  sex === "M"
-                    ? "border-sky-600 bg-sky-600 text-white shadow-xs"
-                    : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
-                }`}
-              >
-                Male
-              </button>
-              <button
-                type="button"
-                aria-pressed={sex === "F"}
-                onClick={() => setSex("F")}
-                className={`inline-flex min-h-[44px] items-center justify-center rounded-lg border px-4 py-2 text-base font-semibold transition focus:ring-2 focus:ring-fuchsia-500 focus:outline-none ${
-                  sex === "F"
-                    ? "border-fuchsia-600 bg-fuchsia-600 text-white shadow-xs"
-                    : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
-                }`}
-              >
-                Female
-              </button>
-            </div>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              aria-pressed={sex === "M"}
+              onClick={() => setSex("M")}
+              className={`inline-flex min-h-[52px] items-center justify-center gap-2 rounded-full border-2 px-4 py-2.5 text-sm font-semibold transition focus:ring-2 focus:ring-sky-400 focus:outline-none ${
+                sex === "M"
+                  ? "border-sky-500 bg-sky-500/12 text-sky-700"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              <MaleIcon className="h-5 w-5" />
+              <span>Male</span>
+            </button>
+            <button
+              type="button"
+              aria-pressed={sex === "F"}
+              onClick={() => setSex("F")}
+              className={`inline-flex min-h-[52px] items-center justify-center gap-2 rounded-full border-2 px-4 py-2.5 text-sm font-semibold transition focus:ring-2 focus:ring-rose-400 focus:outline-none ${
+                sex === "F"
+                  ? "border-rose-500 bg-rose-500/12 text-rose-700"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              <FemaleIcon className="h-5 w-5" />
+              <span>Female</span>
+            </button>
           </div>
 
-          <div className="space-y-1.5">
-            <label
-              htmlFor="staff-student-number"
-              className="block text-sm font-medium text-slate-800"
-            >
+          <div className="flex flex-col gap-2.5 sm:flex-row">
+            <label htmlFor="staff-student-number" className="sr-only">
               Student Number
             </label>
             <input
@@ -289,16 +314,29 @@ export function StaffView({
                   setSubmitErrorState(null);
                 }
               }}
-              placeholder="e.g. 1042"
-              className="min-h-[44px] w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/20 focus:outline-none"
+              placeholder="Student #"
+              className="min-h-[50px] flex-1 rounded-full border border-slate-200 bg-slate-50/70 px-5 py-2.5 font-mono text-base font-semibold text-slate-900 placeholder:font-sans placeholder:font-normal placeholder:text-slate-400 focus:border-slate-900 focus:bg-white focus:outline-none"
             />
+            <button
+              type="submit"
+              disabled={submitting}
+              aria-label="Submit Student"
+              className={`inline-flex min-h-[50px] items-center justify-center gap-2 rounded-full px-7 py-2.5 text-sm font-semibold text-white transition focus:ring-2 focus:ring-slate-400 focus:outline-none disabled:opacity-50 ${
+                isAllowed
+                  ? "bg-slate-900 hover:bg-slate-800"
+                  : "bg-slate-500 hover:bg-slate-600"
+              }`}
+            >
+              <span>{submitting ? "Sending..." : "Submit Student"}</span>
+              <ArrowRightIcon className="h-4 w-4" />
+            </button>
           </div>
 
           {submitError && (
             <div
               role="alert"
               data-testid="staff-submit-error"
-              className="min-w-0 max-w-full rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm break-words [overflow-wrap:anywhere] text-rose-800"
+              className="min-w-0 max-w-full rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-medium break-words [overflow-wrap:anywhere] text-rose-800"
             >
               {submitError}
             </div>
@@ -307,23 +345,11 @@ export function StaffView({
           {submitSuccess && (
             <div
               role="status"
-              className="min-w-0 max-w-full rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm break-words [overflow-wrap:anywhere] text-emerald-800"
+              className="min-w-0 max-w-full rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-medium break-words [overflow-wrap:anywhere] text-emerald-800"
             >
               {submitSuccess}
             </div>
           )}
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className={`inline-flex min-h-[48px] w-full items-center justify-center rounded-lg px-4 py-2.5 text-base font-semibold text-white transition focus:ring-2 focus:ring-slate-500 focus:outline-none disabled:opacity-50 ${
-              isAllowed
-                ? "bg-slate-900 hover:bg-slate-800"
-                : "bg-slate-500 hover:bg-slate-600"
-            }`}
-          >
-            {submitting ? "Submitting..." : "Submit Student"}
-          </button>
         </form>
       </section>
 

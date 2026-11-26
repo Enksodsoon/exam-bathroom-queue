@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+﻿import { expect, test, type Page } from "@playwright/test";
 
 interface ErrorRecorder {
   consoleErrors: string[];
@@ -84,7 +84,7 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
 
     // Recovers automatically when server returns 200
     await expect(
-      page.getByRole("heading", { name: "Controller Dashboard" }),
+      page.getByTestId("window-status-badge"),
     ).toBeVisible({ timeout: 10_000 });
     expect(controllerErrors.pageErrors).toEqual([]);
     expect(
@@ -131,7 +131,7 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
       await expect(staffInitialAlert).toContainText("retrying automatically");
 
       await expect(
-        staffPage.getByText("Signed in as Hall Recovery"),
+        staffPage.getByRole("button", { name: "Hall Recovery" }),
       ).toBeVisible({ timeout: 10_000 });
       expect(staffErrors.pageErrors).toEqual([]);
       expect(
@@ -150,7 +150,7 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
 
     await page.goto(created.controllerUrl);
     await expect(
-      page.getByRole("heading", { name: "Controller Dashboard" }),
+      page.getByTestId("window-status-badge"),
     ).toBeVisible();
 
     let mode: "normal" | "500" | "ahead" | "404" = "500";
@@ -298,7 +298,7 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
       await staffPage.locator("#staff-label-input").fill("Late Joiner");
       await staffPage.getByRole("button", { name: "Join Session" }).click();
       await expect(
-        staffPage.getByText("Signed in as Late Joiner"),
+        staffPage.getByRole("button", { name: "Late Joiner" }),
       ).toBeVisible();
 
       const telemetry = staffPage.getByTestId("alert-telemetry");
@@ -313,7 +313,7 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
       await expect(
         staffPage
           .getByTestId("next-student-alert")
-          .getByText("NEXT MALE: #POST-1"),
+          .getByText("#POST-1"),
       ).toBeVisible({ timeout: 10_000 });
       await expect(telemetry).toHaveAttribute("data-audio-alert-count", "1");
       await expect(telemetry).toHaveAttribute("data-vibrate-alert-count", "1");
@@ -350,7 +350,7 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
 
     await page.goto(created.controllerUrl);
     await expect(
-      page.getByRole("heading", { name: "Controller Dashboard" }),
+      page.getByTestId("window-status-badge"),
     ).toBeVisible();
 
     await page.evaluate((sid) => {
@@ -383,7 +383,7 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
 
     // UI remains intact and unaffected
     await expect(
-      page.getByRole("heading", { name: "Controller Dashboard" }),
+      page.getByTestId("window-status-badge"),
     ).toBeVisible();
     await expect(page.getByTestId("window-status-badge")).toHaveAttribute(
       "data-window-status",
@@ -431,7 +431,7 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
       await staffPage.locator("#staff-label-input").fill("Audio Fail Test");
       await staffPage.getByRole("button", { name: "Join Session" }).click();
       await expect(
-        staffPage.getByText("Signed in as Audio Fail Test"),
+        staffPage.getByRole("button", { name: "Audio Fail Test" }),
       ).toBeVisible();
 
       const subRes = await page.request.post(
@@ -443,7 +443,7 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
       await expect(
         staffPage
           .getByTestId("next-student-alert")
-          .getByText("NEXT FEMALE: #RES-1"),
+          .getByText("#RES-1"),
       ).toBeVisible({ timeout: 10_000 });
 
       const telemetry = staffPage.getByTestId("alert-telemetry");
@@ -502,7 +502,7 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
       await staffPage2.locator("#staff-label-input").fill("Resume Reject Test");
       await staffPage2.getByRole("button", { name: "Join Session" }).click();
       await expect(
-        staffPage2.getByText("Signed in as Resume Reject Test"),
+        staffPage2.getByRole("button", { name: "Resume Reject Test" }),
       ).toBeVisible();
 
       const subRes2 = await page.request.post(
@@ -514,7 +514,7 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
       await expect(
         staffPage2
           .getByTestId("next-student-alert")
-          .getByText("NEXT MALE: #RES-2"),
+          .getByText("#RES-2"),
       ).toBeVisible({ timeout: 10_000 });
       await expect(staffPage2.getByTestId("alert-telemetry")).toHaveAttribute(
         "data-vibrate-alert-count",
@@ -538,7 +538,7 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
     const createBtn = page.getByRole("button", { name: "Create Exam Session" });
     await createBtn.dblclick();
     await expect(
-      page.getByRole("heading", { name: "Controller Dashboard" }),
+      page.getByTestId("window-status-badge"),
     ).toBeVisible({ timeout: 10_000 });
 
     const sessionId = new URL(page.url()).pathname.replace(/^\/s\//, "");
@@ -549,11 +549,12 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
     expect(storedKeyBefore).toBeTruthy();
 
     // Configure into ALLOWED
+    await page.getByRole("button", { name: "Exam Timer Settings" }).click();
     await page.getByRole("button", { name: "Set Start = Now" }).click();
     await page.locator("#exam-duration-minutes").fill("120");
     await page.locator("#exam-clock-offset").fill("35");
     await page.getByRole("button", { name: "Save Exam Config" }).click();
-    await expect(page.getByText("Exam configuration saved.")).toBeVisible();
+    await expect(page.getByText("Timer saved.")).toBeVisible();
 
     // Staff rapid double-click on Join Session and Submit Student
     const staffCtx = await browser.newContext({
@@ -567,13 +568,13 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
       await staffPage.locator("#staff-label-input").fill("Double Clicker");
       await staffPage.getByRole("button", { name: "Join Session" }).dblclick();
       await expect(
-        staffPage.getByText("Signed in as Double Clicker"),
+        staffPage.getByRole("button", { name: "Double Clicker" }),
       ).toBeVisible();
 
       await staffPage.locator("#staff-student-number").fill("DBL-1");
       await staffPage.getByRole("button", { name: "Submit Student" }).dblclick();
       await expect(
-        staffPage.getByText("Added Male #DBL-1 to queue."),
+        staffPage.getByText(/#DBL-1 added/),
       ).toBeVisible();
       await expect(staffPage.getByTestId("staff-submit-error")).toHaveCount(0);
     } finally {
@@ -594,13 +595,13 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
     await page.getByRole("button", { name: "Clear Session" }).click();
     await page.getByRole("button", { name: "Confirm Clear" }).dblclick();
     await expect(
-      page.getByText("Session cleared across all connected clients."),
+      page.getByText("Session cleared."),
     ).toBeVisible();
 
     // Tampered ?key= clears stored controllerKey and falls back to Staff Join view
     await page.goto(`/s/${sessionId}?key=tampered-invalid-key`);
     await expect(
-      page.getByRole("heading", { name: "Join as Roaming Staff" }),
+      page.getByRole("heading", { name: "Staff Check-In" }),
     ).toBeVisible();
     await expect
       .poll(() => new URL(page.url()).searchParams.get("key"))
