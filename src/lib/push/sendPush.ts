@@ -38,10 +38,9 @@ export async function sendNextStudentPushNotifications(
     return;
   }
 
-  const sexLabel = alert.sex === "M" ? "Male" : "Female";
   const payload = JSON.stringify({
-    title: `ExamQ · Next ${sexLabel}`,
-    body: `#${alert.studentNumber} is next in the ${sexLabel.toLowerCase()} queue.`,
+    title: "ExamQ · Queue updated",
+    body: "Open ExamQ to check the current queue.",
     tag: `examq-next-${sessionId}-${alert.sex}`,
     url: `/s/${encodeURIComponent(sessionId)}`,
   });

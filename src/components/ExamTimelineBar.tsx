@@ -20,11 +20,11 @@ export function ExamTimelineBar({
     return (
       <div
         aria-label="Exam timeline not configured"
-        className={`flex items-center gap-1 overflow-hidden rounded-full bg-slate-200/70 ${
+        className={`flex items-center gap-1 overflow-hidden rounded-full bg-slate-200/70 dark:bg-slate-800 ${
           compact ? "h-1.5 w-24 sm:w-32" : "h-2 w-full"
         }`}
       >
-        <div className="h-full w-full bg-slate-300/60" />
+        <div className="h-full w-full bg-slate-300/60 dark:bg-slate-700/60" />
       </div>
     );
   }
@@ -48,7 +48,7 @@ export function ExamTimelineBar({
   return (
     <div
       aria-label={`Exam bathroom window timeline: first ${first} minutes blocked, final ${last} minutes blocked`}
-      className={`relative flex items-center overflow-hidden rounded-full bg-slate-200/80 ${
+      className={`relative flex items-center overflow-hidden rounded-full bg-slate-200/80 dark:bg-slate-800 ${
         compact ? "h-2 w-24 sm:w-36" : "h-2.5 w-full"
       }`}
     >

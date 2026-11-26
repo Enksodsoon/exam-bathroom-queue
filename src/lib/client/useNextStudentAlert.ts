@@ -25,6 +25,7 @@ export interface UseNextStudentAlertResult {
   visualAlertCount: number;
   lastAlertSeq: number;
   toggleMute: () => void;
+  testTabAlert: () => void;
   dismissAlert: () => void;
   handleSnapshot: (snapshot: SessionSnapshot, meta: { isInitial: boolean }) => void;
 }
@@ -354,11 +355,10 @@ export function useNextStudentAlert(
             Notification.permission === "granted" &&
             "serviceWorker" in navigator
           ) {
-            const sexLabel = evaluation.alert.sex === "M" ? "Male" : "Female";
             void navigator.serviceWorker.ready
               .then((reg) =>
-                reg.showNotification(`ExamQ · Next ${sexLabel}`, {
-                  body: `#${evaluation.alert.studentNumber} is next in the ${sexLabel.toLowerCase()} queue.`,
+                reg.showNotification("ExamQ · Queue updated", {
+                  body: "Open ExamQ to check the current queue.",
                   icon: "/icons/icon-192.png",
                   badge: "/icons/icon-192.png",
                   tag: `examq-next-${evaluation.alert.sex}`,
@@ -391,6 +391,10 @@ export function useNextStudentAlert(
     setMuted(next);
   }, [ensureAudioContext]);
 
+  const testTabAlert = useCallback(() => {
+    playChime();
+  }, [playChime]);
+
   const dismissAlert = useCallback(() => {
     setAlertState((prev) => ({
       ...prev,
@@ -406,6 +410,7 @@ export function useNextStudentAlert(
     visualAlertCount: alertState.visualAlertCount,
     lastAlertSeq: alertState.lastAlertSeq,
     toggleMute,
+    testTabAlert,
     dismissAlert,
     handleSnapshot,
   };

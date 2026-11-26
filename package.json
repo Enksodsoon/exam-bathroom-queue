@@ -13,6 +13,7 @@
   "dependencies": {
     "@types/web-push": "^3.6.4",
     "@upstash/redis": "^1.41.1",
+    "jsqr": "1.4.0",
     "next": "16.4.6",
     "qrcode": "^1.5.4",
     "react": "^19.3.1",

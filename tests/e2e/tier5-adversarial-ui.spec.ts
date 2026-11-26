@@ -29,6 +29,7 @@ async function createConfiguredSessionViaApi(page: Page) {
     controllerKey: string;
     joinUrl: string;
     controllerUrl: string;
+    snapshot: { inviteCode: string };
   };
 
   const cfgRes = await page.request.patch(
@@ -77,10 +78,7 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
     const ctrlInitialAlert = page.getByTestId("initial-sync-error");
     await expect(ctrlInitialAlert).toBeVisible();
     await expect(ctrlInitialAlert).toHaveAttribute("role", "alert");
-    await expect(ctrlInitialAlert).toContainText(
-      "Storage temporarily unavailable",
-    );
-    await expect(ctrlInitialAlert).toContainText("retrying automatically");
+    await expect(ctrlInitialAlert).toHaveText("Reconnecting…");
 
     // Recovers automatically when server returns 200
     await expect(
@@ -94,7 +92,7 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
     // Staff with pre-existing identity: intercept initial GET with 500 HTML (tests Bug 2 + non-JSON error resilience)
     const joinRes = await page.request.post(
       `/api/sessions/${created.sessionId}/join`,
-      { data: { label: "Hall Recovery" } },
+      { data: { label: "Hall Recovery", inviteCode: created.snapshot.inviteCode } },
     );
     expect(joinRes.status()).toBe(200);
     const joined = (await joinRes.json()) as {
@@ -149,7 +147,7 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
       const staffInitialAlert = staffPage.getByTestId("initial-sync-error");
       await expect(staffInitialAlert).toBeVisible();
       await expect(staffInitialAlert).toHaveAttribute("role", "alert");
-      await expect(staffInitialAlert).toContainText("retrying automatically");
+      await expect(staffInitialAlert).toHaveText("Reconnecting…");
 
       await expect(
         staffPage.getByRole("button", { name: "Hall Recovery" }),
@@ -226,11 +224,11 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
       await route.continue();
     });
 
-    // Mid-session 500 triggers visible Sync warning, then recovers
-    await expect(page.getByText(/Sync warning: Transient 500/)).toBeVisible({
+    // Mid-session 500 shows a short reconnect status, then recovers
+    await expect(page.getByText(/Reconnecting…/)).toBeVisible({
       timeout: 10_000,
     });
-    await expect(page.getByText(/Sync warning:/)).toHaveCount(0, {
+    await expect(page.getByText(/Reconnecting…/)).toHaveCount(0, {
       timeout: 10_000,
     });
     await expect

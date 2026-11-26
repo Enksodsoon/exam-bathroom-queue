@@ -4,30 +4,15 @@ import { useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { ApiClientError, createSession } from "@/lib/client/api";
 import { saveControllerKey } from "@/lib/client/storage";
+import { useAppPreferences } from "@/components/AppPreferencesProvider";
+import { HomeQrScanner } from "@/components/HomeQrScanner";
+import { resolveExamJoinPath } from "@/lib/client/joinLink";
 import { ArrowRightIcon, PlusIcon, QrIcon } from "@/components/Icons";
-
-function extractStaffDestination(rawInput: string): string {
-  const trimmed = rawInput.trim();
-  if (!trimmed) return "";
-
-  // Never navigate to the caller's origin or forward a controller credential.
-  // Accept the legacy bare session ID, or retain only the staff invite from a link.
-  if (/^[\w-]+$/.test(trimmed)) return `/s/${encodeURIComponent(trimmed)}`;
-  try {
-    const url = new URL(trimmed.startsWith("s/") ? `/${trimmed}` : trimmed, "https://examq.invalid");
-    if (url.protocol !== "https:" && url.protocol !== "http:") return "";
-    const match = url.pathname.match(/^\/s\/([\w-]+)\/?$/);
-    if (!match) return "";
-    const invite = url.searchParams.get("invite")?.trim();
-    const path = `/s/${encodeURIComponent(match[1])}`;
-    return invite ? `${path}?${new URLSearchParams({ invite })}` : path;
-  } catch {
-    return "";
-  }
-}
+import { ThemeLangToggle } from "@/components/ThemeLangToggle";
 
 export default function HomePage() {
   const router = useRouter();
+  const { t } = useAppPreferences();
   const [creating, setCreating] = useState(false);
   const creatingRef = useRef(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -59,9 +44,9 @@ export default function HomePage() {
 
   const handleJoinSession = (e: FormEvent) => {
     e.preventDefault();
-    const destination = extractStaffDestination(joinInput);
+    const destination = resolveExamJoinPath(joinInput, window.location.origin);
     if (!destination) {
-      setJoinError("Enter a session code or link.");
+      setJoinError(t.pasteLinkError);
       return;
     }
     setJoinError(null);
@@ -70,13 +55,16 @@ export default function HomePage() {
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col justify-center overflow-x-hidden px-5 py-10 sm:px-8">
-      <header className="mb-10 flex flex-col items-center text-center">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white px-3.5 py-1.5 text-xs font-medium tracking-wide text-slate-600 shadow-2xs">
+      <div className="mb-4 flex justify-end">
+        <ThemeLangToggle />
+      </div>
+      <header className="mb-7 flex flex-col items-center text-center">
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white px-3.5 py-1.5 text-xs font-medium tracking-wide text-slate-600 shadow-2xs dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
           <span className="h-2 w-2 rounded-full bg-emerald-500" />
-          <span>ExamQ</span>
+          <span>{t.appName}</span>
         </div>
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
-          Bathroom Queue
+        <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl dark:text-slate-100">
+          {t.bathroomQueue}
         </h1>
       </header>
 
@@ -84,31 +72,28 @@ export default function HomePage() {
         {/* New Exam Session (Controller) */}
         <section
           aria-label="Create Exam Session"
-          className="flex min-w-0 flex-col justify-between gap-6 rounded-3xl border border-slate-200/90 bg-white p-7 shadow-xs transition hover:border-slate-300/90"
+          className="flex min-w-0 flex-col justify-between gap-4 rounded-3xl border border-slate-200/90 bg-white p-5 sm:p-6 shadow-xs transition hover:border-slate-300/90 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
         >
           <div className="flex items-start justify-between gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/12 text-emerald-700">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/12 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
               <PlusIcon className="h-6 w-6" />
             </div>
-            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-              Controller
+            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+              {t.controller}
             </span>
           </div>
 
           <div className="space-y-1">
-            <h2 className="text-xl font-semibold tracking-tight text-slate-900">
-              New Exam
+            <h2 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+              {t.newExam}
             </h2>
-            <p className="text-sm text-slate-500">
-              1-tap session, timer &amp; QR
-            </p>
           </div>
 
           <div className="space-y-3">
             {createError && (
               <div
                 role="alert"
-                className="rounded-2xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-medium text-rose-800"
+                className="rounded-2xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-medium text-rose-800 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-200"
               >
                 {createError}
               </div>
@@ -121,9 +106,9 @@ export default function HomePage() {
                 void handleCreateSession();
               }}
               aria-label="Create Exam Session"
-              className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 focus:ring-2 focus:ring-slate-400 focus:outline-none disabled:opacity-50"
+              className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 focus:ring-2 focus:ring-slate-400 focus:outline-none disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
             >
-              <span>{creating ? "Starting..." : "Create Exam Session"}</span>
+              <span>{creating ? t.starting : t.create}</span>
               <ArrowRightIcon className="h-4 w-4" />
             </button>
           </div>
@@ -132,25 +117,24 @@ export default function HomePage() {
         {/* Join Existing Session (Staff) */}
         <section
           aria-label="Join Existing Session"
-          className="flex min-w-0 flex-col justify-between gap-6 rounded-3xl border border-slate-200/90 bg-white p-7 shadow-xs transition hover:border-slate-300/90"
+          className="flex min-w-0 flex-col justify-between gap-4 rounded-3xl border border-slate-200/90 bg-white p-5 sm:p-6 shadow-xs transition hover:border-slate-300/90 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
         >
           <div className="flex items-start justify-between gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/12 text-sky-700">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/12 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300">
               <QrIcon className="h-6 w-6" />
             </div>
-            <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700">
-              Staff
+            <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700 dark:bg-sky-950/60 dark:text-sky-300">
+              {t.staff}
             </span>
           </div>
 
           <div className="space-y-1">
-            <h2 className="text-xl font-semibold tracking-tight text-slate-900">
-              Join Session
+            <h2 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+              {t.joinSession}
             </h2>
-            <p className="text-sm text-slate-500">
-              Open your proctor’s QR link, or paste it here.
-            </p>
           </div>
+
+          <HomeQrScanner onJoin={(path) => router.push(path)} />
 
           <form
             onSubmit={handleJoinSession}
@@ -171,14 +155,14 @@ export default function HomePage() {
                   setJoinError(null);
                 }
               }}
-              placeholder="Paste staff invitation link"
-              className="min-h-[46px] w-full rounded-full border border-slate-200 bg-slate-50/70 px-4 py-2 text-sm font-mono text-slate-900 placeholder:font-sans placeholder:text-slate-400 focus:border-slate-900 focus:bg-white focus:outline-none"
+              placeholder={t.staffLinkPlaceholder}
+              className="min-h-[46px] w-full rounded-full border border-slate-200 bg-slate-50/70 px-4 py-2 text-sm font-mono text-slate-900 placeholder:font-sans placeholder:text-slate-400 focus:border-slate-900 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-400 dark:focus:bg-slate-800"
             />
 
             {joinError && (
               <div
                 role="alert"
-                className="rounded-2xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-medium text-rose-800"
+                className="rounded-2xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-medium text-rose-800 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-200"
               >
                 {joinError}
               </div>
@@ -187,9 +171,9 @@ export default function HomePage() {
             <button
               type="submit"
               aria-label="Join Session"
-              className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 focus:ring-2 focus:ring-slate-400 focus:outline-none"
+              className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 focus:ring-2 focus:ring-slate-400 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
             >
-              <span>Join Session</span>
+              <span>{t.joinButton}</span>
               <ArrowRightIcon className="h-4 w-4" />
             </button>
           </form>

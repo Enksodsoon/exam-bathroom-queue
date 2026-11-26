@@ -7,7 +7,9 @@ import {
   saveStaffIdentity,
   type StoredStaffIdentity,
 } from "@/lib/client/storage";
+import { useAppPreferences } from "./AppPreferencesProvider";
 import { ArrowRightIcon, UserBadgeIcon } from "./Icons";
+import { ThemeLangToggle } from "./ThemeLangToggle";
 
 interface StaffJoinFormProps {
   sessionId: string;
@@ -28,6 +30,7 @@ export function StaffJoinForm({
   inviteCode = null,
   onJoined,
 }: StaffJoinFormProps) {
+  const { t } = useAppPreferences();
   const [label, setLabel] = useState(initialLabel);
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
@@ -40,7 +43,7 @@ export function StaffJoinForm({
     }
     const trimmed = label.trim();
     if (!trimmed) {
-      setError("Enter your name or hall label.");
+      setError(t.enterNameError);
       return;
     }
     if (trimmed.length > MAX_LABEL_LEN) {
@@ -74,23 +77,23 @@ export function StaffJoinForm({
   };
 
   return (
-    <section className="mx-auto w-full max-w-md rounded-3xl border border-slate-200/90 bg-white p-7 shadow-xs">
+    <section className="mx-auto w-full max-w-md rounded-3xl border border-slate-200/90 bg-white p-7 shadow-xs dark:border-slate-800 dark:bg-slate-900">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/12 text-sky-700">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/12 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300">
           <UserBadgeIcon className="h-6 w-6" />
         </div>
-        <span className="max-w-[180px] truncate rounded-full bg-slate-100 px-3 py-1 font-mono text-xs font-medium text-slate-600">
-          {sessionId}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="max-w-[120px] truncate rounded-full bg-slate-100 px-3 py-1 font-mono text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+            {sessionId}
+          </span>
+          <ThemeLangToggle />
+        </div>
       </div>
 
       <div className="mt-5 space-y-1">
-        <h1 className="text-xl font-semibold tracking-tight text-slate-900">
-          Staff Check-In
+        <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          {t.staffCheckIn}
         </h1>
-        <p className="text-sm text-slate-500">
-          Name or room · no password
-        </p>
       </div>
 
       <form
@@ -116,14 +119,14 @@ export function StaffJoinForm({
               setError(null);
             }
           }}
-          placeholder="e.g. Proctor A / Hall 2"
-          className="min-h-[48px] w-full rounded-full border border-slate-200 bg-slate-50/70 px-4 py-2.5 text-base text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:bg-white focus:outline-none"
+          placeholder={t.yourNamePlaceholder}
+          className="min-h-[48px] w-full rounded-full border border-slate-200 bg-slate-50/70 px-4 py-2.5 text-base text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-400 dark:focus:bg-slate-800"
         />
 
         {error && (
           <div
             role="alert"
-            className="min-w-0 max-w-full rounded-2xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-medium break-words [overflow-wrap:anywhere] text-rose-800"
+            className="min-w-0 max-w-full rounded-2xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-medium break-words [overflow-wrap:anywhere] text-rose-800 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-200"
           >
             {error}
           </div>
@@ -131,10 +134,11 @@ export function StaffJoinForm({
 
         <button
           type="submit"
+          aria-label="Join Session"
           disabled={submitting}
-          className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 focus:ring-2 focus:ring-slate-400 focus:outline-none disabled:opacity-50"
+          className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 focus:ring-2 focus:ring-slate-400 focus:outline-none disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
         >
-          <span>{submitting ? "Joining..." : "Join Session"}</span>
+          <span>{submitting ? t.joining : t.joinButton}</span>
           <ArrowRightIcon className="h-4 w-4" />
         </button>
       </form>

@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { useClientOrigin } from "@/lib/client/storage";
+import { useAppPreferences } from "./AppPreferencesProvider";
 import { CheckReturnIcon, CopyIcon, ResetIcon } from "./Icons";
 
 interface QrShareCardProps {
@@ -20,6 +21,7 @@ export function QrShareCard({
   rotatingInvite = false,
   onRotateInvite,
 }: QrShareCardProps) {
+  const { t } = useAppPreferences();
   const origin = useClientOrigin();
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
@@ -70,10 +72,10 @@ export function QrShareCard({
   return (
     <section
       aria-label="Share Session Link and QR Code"
-      className="min-w-0 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs"
+      className="min-w-0 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900"
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div className="flex shrink-0 items-center justify-center rounded-2xl border border-slate-200/80 bg-white p-2.5">
+        <div className="flex shrink-0 items-center justify-center rounded-2xl border border-slate-200/80 bg-white p-2.5 dark:border-slate-700">
           <svg
             role="img"
             aria-label={`QR code to join exam session ${sessionId}`}
@@ -89,12 +91,9 @@ export function QrShareCard({
 
         <div className="min-w-0 flex-1 space-y-2.5">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-slate-900">
-              Staff QR &amp; Link
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              {t.shareStaffJoin}
             </h2>
-            <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-[11px] font-medium text-sky-800">
-              Scan to join
-            </span>
           </div>
 
           <input
@@ -105,11 +104,11 @@ export function QrShareCard({
             data-share-url={shareUrl}
             value={shareUrl}
             onClick={(e) => e.currentTarget.select()}
-            className="min-h-[44px] w-full rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3.5 py-2 font-mono text-xs text-slate-800 focus:border-slate-900 focus:outline-none"
+            className="min-h-[44px] w-full rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3.5 py-2 font-mono text-xs text-slate-800 focus:border-slate-900 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-400"
           />
 
           {copyError && (
-            <p role="status" className="text-xs font-medium text-amber-800">
+            <p role="status" className="text-xs font-medium text-amber-800 dark:text-amber-300">
               {copyError}
             </p>
           )}
@@ -124,7 +123,7 @@ export function QrShareCard({
               className={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition focus:ring-2 focus:ring-slate-400 focus:outline-none ${
                 copied
                   ? "bg-emerald-700 text-white"
-                  : "bg-slate-900 text-white hover:bg-slate-800"
+                  : "bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
               }`}
             >
               {copied ? (
@@ -132,7 +131,7 @@ export function QrShareCard({
               ) : (
                 <CopyIcon className="h-3.5 w-3.5" />
               )}
-              <span>{copied ? "Copied" : "Copy Link"}</span>
+              <span>{copied ? t.copied : t.copyLink}</span>
             </button>
 
             {onRotateInvite && (
@@ -141,10 +140,10 @@ export function QrShareCard({
                 disabled={rotatingInvite}
                 onClick={onRotateInvite}
                 aria-label="Rotate Join Link"
-                className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 focus:ring-2 focus:ring-slate-400 focus:outline-none disabled:opacity-50"
+                className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 focus:ring-2 focus:ring-slate-400 focus:outline-none disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
               >
                 <ResetIcon className="h-3.5 w-3.5" />
-                <span>{rotatingInvite ? "Rotating..." : "Rotate Link"}</span>
+                <span>{rotatingInvite ? t.rotating : t.newLink}</span>
               </button>
             )}
           </div>

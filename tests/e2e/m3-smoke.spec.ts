@@ -294,9 +294,7 @@ test.describe("M3 Exam Bathroom Queue E2E", () => {
         await homePage.goto("/");
         await homePage.locator("#join-session-input").fill(shareUrl);
         await homePage.getByRole("button", { name: "Join Session" }).click();
-        await expect(homePage).toHaveURL(
-          new RegExp(`/s/${sessionId}\\?invite=`),
-        );
+        await expect(homePage).toHaveURL(shareUrl);
         await expect(
           homePage.getByRole("heading", { name: "Staff Check-In" }),
         ).toBeVisible();

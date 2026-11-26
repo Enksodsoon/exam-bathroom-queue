@@ -20,6 +20,14 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // The same-origin home page is the only entry point that needs a camera.
+      {
+        source: "/",
+        headers: [{
+          key: "Permissions-Policy",
+          value: "camera=(self), microphone=(), geolocation=()",
+        }],
+      },
     ];
   },
 };

@@ -12,6 +12,7 @@ import {
 import type { UseNextStudentAlertResult } from "@/lib/client/useNextStudentAlert";
 import { usePushNotifications } from "@/lib/client/usePushNotifications";
 import { AlertBanner } from "./AlertBanner";
+import { useAppPreferences } from "./AppPreferencesProvider";
 import { ExamTimelineBar } from "./ExamTimelineBar";
 import {
   ArrowRightIcon,
@@ -24,6 +25,7 @@ import {
 } from "./Icons";
 import { PushAlertsButton, PushAlertsNotice } from "./PushAlertsButton";
 import { QueueColumn } from "./QueueColumn";
+import { ThemeLangToggle } from "./ThemeLangToggle";
 
 interface StaffViewProps {
   sessionId: string;
@@ -52,6 +54,7 @@ export function StaffView({
   onMutationSnapshot,
   onChangeName,
 }: StaffViewProps) {
+  const { locale, t } = useAppPreferences();
   const [sex, setSex] = useState<Sex>("M");
   const [studentNumber, setStudentNumber] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -70,15 +73,15 @@ export function StaffView({
 
   if (!snapshot) {
     return (
-      <div className="mx-auto max-w-3xl space-y-3 rounded-3xl border border-slate-200/90 bg-white p-8 text-center text-sm break-words [overflow-wrap:anywhere] text-slate-500 shadow-xs">
-        <p className="font-mono text-xs">Loading {sessionId}...</p>
+      <div className="mx-auto max-w-3xl space-y-3 rounded-3xl border border-slate-200/90 bg-white p-8 text-center text-sm break-words [overflow-wrap:anywhere] text-slate-500 shadow-xs dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+        <p className="text-xs">{t.loading}…</p>
         {syncError && (
           <div
             role="alert"
             data-testid="initial-sync-error"
-            className="min-w-0 max-w-full rounded-2xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs break-words [overflow-wrap:anywhere] text-amber-900"
+            className="min-w-0 max-w-full rounded-2xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs break-words [overflow-wrap:anywhere] text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200"
           >
-            Sync warning: {syncError} (retrying automatically)
+            {t.reconnecting}
           </div>
         )}
       </div>
@@ -95,7 +98,7 @@ export function StaffView({
       ? submitSuccessState.text
       : null;
 
-  const windowMeta = describeWindowStatus(snapshot.windowStatus, snapshot.examConfig);
+  const windowMeta = describeWindowStatus(snapshot.windowStatus, snapshot.examConfig, locale);
   const isAllowed = snapshot.windowStatus === "ALLOWED";
 
   const handleSubmit = async (e: FormEvent) => {
@@ -107,7 +110,7 @@ export function StaffView({
     if (!trimmed) {
       setSubmitErrorState({
         clearedSeq: currentClearedSeq,
-        text: "Enter a student number.",
+        text: t.enterStudentError,
       });
       setSubmitSuccessState(null);
       return;
@@ -115,7 +118,7 @@ export function StaffView({
     if (trimmed.length > MAX_STUDENT_NUM_LEN) {
       setSubmitErrorState({
         clearedSeq: currentClearedSeq,
-        text: `Max ${MAX_STUDENT_NUM_LEN} characters.`,
+        text: t.maxCharsError,
       });
       setSubmitSuccessState(null);
       return;
@@ -143,20 +146,20 @@ export function StaffView({
       setStudentNumber("");
       setSubmitSuccessState({
         clearedSeq: res.snapshot.clearedSeq,
-        text: `${sex === "M" ? "♂" : "♀"} #${res.entry.studentNumber} added`,
+        text: `${sex === "M" ? "♂" : "♀"} #${res.entry.studentNumber} ${t.addedStatus}`,
       });
     } catch (err) {
       if (err instanceof ApiClientError) {
         setSubmitErrorState({
           clearedSeq: currentClearedSeq,
           text: err.windowStatus && err.code === "OUTSIDE_TIME_WINDOW"
-            ? describeWindowStatus(err.windowStatus, snapshot.examConfig).description
+            ? describeWindowStatus(err.windowStatus, snapshot.examConfig, locale).description
             : err.message,
         });
       } else {
         setSubmitErrorState({
           clearedSeq: currentClearedSeq,
-          text: "Failed to submit student.",
+          text: t.failedSubmitError,
         });
       }
     } finally {
@@ -168,7 +171,7 @@ export function StaffView({
   return (
     <div className="space-y-5">
       {/* Slim Staff Top Bar */}
-      <header className="rounded-3xl border border-slate-200/90 bg-white px-4 py-3 shadow-xs">
+      <header className="rounded-3xl border border-slate-200/90 bg-white px-4 py-3 shadow-xs dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 flex-wrap items-center gap-2.5">
             <span
@@ -193,16 +196,16 @@ export function StaffView({
               compact
             />
 
-            <span className="font-mono text-xs text-slate-600 tabular-nums">
+            <span className="font-mono text-xs text-slate-600 tabular-nums dark:text-slate-400">
               {formatTimeOnly(snapshot.effectiveNowMs)}
             </span>
             {syncStale ? (
               <span
                 data-testid="sync-stale-badge"
-                className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-900"
+                className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-900 dark:bg-amber-950/70 dark:text-amber-200"
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-600" />
-                Stale
+                {t.reconnectingShort}
                 {lastSyncedAgeSeconds !== null
                   ? ` · ${lastSyncedAgeSeconds}s`
                   : ""}
@@ -210,8 +213,8 @@ export function StaffView({
             ) : (
               lastSyncedAtMs !== null && (
                 <span
-                  title="Live Sync"
-                  className="h-2 w-2 rounded-full bg-emerald-700"
+                  title={t.liveSync}
+                  className="h-2 w-2 rounded-full bg-emerald-700 dark:bg-emerald-400"
                 />
               )
             )}
@@ -225,11 +228,11 @@ export function StaffView({
               onClick={alert.toggleMute}
               aria-pressed={alert.muted}
               aria-label={alert.muted ? "Unmute Alerts" : "Mute Alerts"}
-              title={alert.muted ? "Unmute Alerts" : "Mute Alerts"}
+              title={alert.muted ? t.unmuteAlerts : t.muteAlerts}
               className={`inline-flex h-11 w-11 items-center justify-center rounded-full transition ${
                 alert.muted
-                  ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  ? "bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-950/70 dark:text-amber-200"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
               }`}
             >
               {alert.muted ? (
@@ -242,27 +245,24 @@ export function StaffView({
             <button
               type="button"
               onClick={onChangeName}
-              title="Switch Staff"
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+              title={t.switchStaffTitle}
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
-              <UserBadgeIcon className="h-3.5 w-3.5 text-slate-500" />
+              <UserBadgeIcon className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
               <span className="max-w-[120px] truncate">
                 {staffIdentity.label}
               </span>
             </button>
+
+            <ThemeLangToggle />
           </div>
         </div>
 
-        <PushAlertsNotice push={push} />
+        <PushAlertsNotice push={push} onTestTabAlert={alert.testTabAlert} />
 
-        {syncError && (
-          <div
-            role="status"
-            className="mt-2.5 min-w-0 max-w-full rounded-2xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs break-words [overflow-wrap:anywhere] text-amber-900"
-          >
-            Sync warning: {syncError} (retrying automatically)
-          </div>
-        )}
+        <span role="status" className="sr-only">
+          {syncStale ? t.reconnectingNotice : ""}
+        </span>
       </header>
 
       {/* Alert Telemetry & Floating Next-Up Spotlight */}
@@ -280,28 +280,27 @@ export function StaffView({
       {/* Icon-First Quick Submit Card */}
       <section
         aria-label="Submit Student to Bathroom Queue"
-        className="min-w-0 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs"
+        className="min-w-0 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900"
       >
         {syncStale && (
           <p
             id="staff-reconnect-help"
             data-testid="staff-reconnect-help"
             role="status"
-            className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+            className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-100"
           >
-            <strong>Reconnecting. New submissions are paused.</strong>{" "}
-            The queue below is the last synced view. Your entry stays here while this page is open.
+            <strong>{t.reconnectingStaffTitle}</strong>{" "}
+            {t.reconnectingStaffBody}
           </p>
         )}
         {!isAllowed && (
           <div
             id="staff-window-block-notice"
             data-testid="staff-window-block-notice"
-            className="mb-4 flex min-w-0 max-w-full items-center gap-2.5 rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-2.5 text-xs font-medium break-words [overflow-wrap:anywhere] text-rose-900"
+            className="mb-4 flex min-w-0 max-w-full items-center gap-2.5 rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-2.5 text-xs font-medium break-words [overflow-wrap:anywhere] text-rose-900 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-200"
           >
-            <LockIcon className="h-4 w-4 shrink-0 text-rose-600" />
+            <LockIcon className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
             <span>
-              <strong className="font-semibold">{windowMeta.label}:</strong>{" "}
               {windowMeta.description}
             </span>
           </div>
@@ -321,12 +320,12 @@ export function StaffView({
               onClick={() => setSex("M")}
               className={`inline-flex min-h-[52px] items-center justify-center gap-2 rounded-full border-2 px-4 py-2.5 text-sm font-semibold transition focus:ring-2 focus:ring-sky-400 focus:outline-none ${
                 sex === "M"
-                  ? "border-sky-500 bg-sky-500/12 text-sky-700"
-                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  ? "border-sky-500 bg-sky-500/12 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
               }`}
             >
               <MaleIcon className="h-5 w-5" />
-              <span>Male</span>
+              <span>{t.male}</span>
             </button>
             <button
               type="button"
@@ -334,12 +333,12 @@ export function StaffView({
               onClick={() => setSex("F")}
               className={`inline-flex min-h-[52px] items-center justify-center gap-2 rounded-full border-2 px-4 py-2.5 text-sm font-semibold transition focus:ring-2 focus:ring-rose-400 focus:outline-none ${
                 sex === "F"
-                  ? "border-rose-500 bg-rose-500/12 text-rose-700"
-                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  ? "border-rose-500 bg-rose-500/12 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
               }`}
             >
               <FemaleIcon className="h-5 w-5" />
-              <span>Female</span>
+              <span>{t.female}</span>
             </button>
           </div>
 
@@ -360,23 +359,27 @@ export function StaffView({
                   setSubmitErrorState(null);
                 }
               }}
-              placeholder="Student #"
-              className="min-h-[50px] flex-1 rounded-full border border-slate-200 bg-slate-50/70 px-5 py-2.5 font-mono text-base font-semibold text-slate-900 placeholder:font-sans placeholder:font-normal placeholder:text-slate-400 focus:border-slate-900 focus:bg-white focus:outline-none"
+              placeholder={t.studentNumberPlaceholder}
+              className="min-h-[50px] flex-1 rounded-full border border-slate-200 bg-slate-50/70 px-5 py-2.5 font-mono text-base font-semibold text-slate-900 placeholder:font-sans placeholder:font-normal placeholder:text-slate-400 focus:border-slate-900 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-400 dark:focus:bg-slate-800"
             />
             <button
               type="submit"
               disabled={submitting || syncStale}
               aria-label="Submit Student"
               aria-describedby={
-                syncStale ? "staff-reconnect-help" : !isAllowed ? "staff-window-block-notice" : undefined
+                syncStale
+                  ? "staff-reconnect-help"
+                  : !isAllowed
+                    ? "staff-window-block-notice"
+                    : undefined
               }
               className={`inline-flex min-h-[50px] items-center justify-center gap-2 rounded-full px-7 py-2.5 text-sm font-semibold text-white transition focus:ring-2 focus:ring-slate-400 focus:outline-none disabled:opacity-50 ${
                 isAllowed
-                  ? "bg-slate-900 hover:bg-slate-800"
-                  : "bg-slate-600 hover:bg-slate-700"
+                  ? "bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+                  : "bg-slate-600 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600"
               }`}
             >
-              <span>{submitting ? "Sending..." : "Submit Student"}</span>
+              <span>{submitting ? t.addingButton : t.submitButton}</span>
               <ArrowRightIcon className="h-4 w-4" />
             </button>
           </div>
@@ -385,7 +388,7 @@ export function StaffView({
             <div
               role="alert"
               data-testid="staff-submit-error"
-              className="min-w-0 max-w-full rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-medium break-words [overflow-wrap:anywhere] text-rose-800"
+              className="min-w-0 max-w-full rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-medium break-words [overflow-wrap:anywhere] text-rose-800 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-200"
             >
               {submitError}
             </div>
@@ -394,7 +397,7 @@ export function StaffView({
           {submitSuccess && (
             <div
               role="status"
-              className="min-w-0 max-w-full rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-medium break-words [overflow-wrap:anywhere] text-emerald-800"
+              className="min-w-0 max-w-full rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-medium break-words [overflow-wrap:anywhere] text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200"
             >
               {submitSuccess}
             </div>

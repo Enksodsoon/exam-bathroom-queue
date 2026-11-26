@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import type { UsePushNotificationsResult } from "@/lib/client/usePushNotifications";
+import { useAppPreferences } from "./AppPreferencesProvider";
 import { BellIcon, BellOffIcon } from "./Icons";
 
 interface PushAlertsButtonProps {
@@ -8,22 +10,23 @@ interface PushAlertsButtonProps {
 }
 
 export function PushAlertsButton({ push }: PushAlertsButtonProps) {
+  const { t } = useAppPreferences();
   if (!push.supported || !push.vapidConfigured) {
     return null;
   }
 
   const isDenied = push.permission === "denied";
   const label = push.isSubscribed
-    ? "Push On"
+    ? t.pushOn
     : isDenied
-      ? "Blocked"
-      : "Push";
+      ? t.pushBlocked
+      : t.pushOff;
 
   const title = push.isSubscribed
-    ? "Background Push Alerts On (tap to turn off)"
+    ? t.pushOnTitle
     : isDenied
-      ? "Notifications blocked in browser settings"
-      : "Enable Background & Lock-Screen Push Alerts";
+      ? t.pushBlockedTitle
+      : t.pushOffTitle;
 
   return (
     <button
@@ -38,8 +41,8 @@ export function PushAlertsButton({ push }: PushAlertsButtonProps) {
         push.isSubscribed
           ? "bg-emerald-700 text-white hover:bg-emerald-800"
           : isDenied
-            ? "bg-rose-100 text-rose-900"
-            : "bg-slate-100 text-slate-800 hover:bg-slate-200"
+            ? "bg-rose-100 text-rose-900 dark:bg-rose-950/70 dark:text-rose-200"
+            : "bg-slate-100 text-slate-800 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
       }`}
     >
       {isDenied ? (
@@ -52,30 +55,34 @@ export function PushAlertsButton({ push }: PushAlertsButtonProps) {
   );
 }
 
-export function PushAlertsNotice({ push }: PushAlertsButtonProps) {
-  if (!push.isIosBrowserNotStandalone && !push.error) {
-    return null;
-  }
-
+export function PushAlertsNotice({
+  push,
+  onTestTabAlert,
+}: PushAlertsButtonProps & { onTestTabAlert: () => void }) {
+  const { t } = useAppPreferences();
+  const [testRan, setTestRan] = useState(false);
   return (
     <div className="mt-2.5 space-y-1.5">
+      <div className="flex flex-wrap items-center gap-x-3 text-xs text-slate-700 dark:text-slate-300">
+        <span>{t.liveInThisTab}</span>
+        <button type="button" onClick={() => { onTestTabAlert(); setTestRan(true); }}
+          aria-label="Test in-tab alert" title={t.testSoundTitle}
+          className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-2 font-semibold text-sky-900 focus-visible:outline-2 dark:text-sky-300">
+          <BellIcon className="h-4 w-4" /> {t.testSound}
+        </button>
+      </div>
+      {testRan && <p role="status" className="px-3 text-xs text-slate-700 dark:text-slate-300">
+        {t.testAlertRan}
+      </p>}
       {push.isIosBrowserNotStandalone && (
-        <div
-          data-testid="ios-pwa-hint"
-          className="min-w-0 max-w-full rounded-2xl border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs text-sky-900"
-        >
-          iPhone / iPad lock-screen alerts: tap{" "}
-          <span className="font-semibold">Share → Add to Home Screen</span>,
-          open ExamQ from Home Screen, then tap{" "}
-          <span className="font-semibold">Push</span>.
-        </div>
+        <details data-testid="ios-pwa-hint" className="text-xs text-slate-600 dark:text-slate-400">
+          <summary className="min-h-[44px] cursor-pointer py-3 font-medium">{t.iosHelpButton}</summary>
+          <p className="pb-2">{t.iosHelpHint}</p>
+        </details>
       )}
       {push.error && (
-        <div
-          role="status"
-          data-testid="push-alerts-error"
-          className="min-w-0 max-w-full rounded-2xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-900"
-        >
+        <div role="status" data-testid="push-alerts-error"
+          className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200">
           {push.error}
         </div>
       )}

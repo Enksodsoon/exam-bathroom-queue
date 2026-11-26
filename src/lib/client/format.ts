@@ -1,5 +1,6 @@
 import { getExamBlockMinutes } from "@/lib/domain/window";
 import type { ExamConfig, WindowStatus } from "@/lib/domain/types";
+import type { Locale } from "@/lib/i18n/translations";
 
 export interface WindowStatusMeta {
   label: string;
@@ -10,58 +11,75 @@ export interface WindowStatusMeta {
 export function describeWindowStatus(
   status: WindowStatus,
   config?: ExamConfig | null,
+  locale: Locale = "en",
 ): WindowStatusMeta {
   const { first, last } = getExamBlockMinutes(config);
-  if (config && first + last >= config.durationMinutes &&
-    (status === "BEFORE_START" || status === "FIRST_30_MIN" || status === "LAST_20_MIN")) {
+  const isTh = locale === "th";
+
+  if (
+    config &&
+    first + last >= config.durationMinutes &&
+    (status === "BEFORE_START" ||
+      status === "FIRST_30_MIN" ||
+      status === "LAST_20_MIN")
+  ) {
     return {
-      label: "No normal request window",
-      description: "The opening and closing blocks cover the whole exam. Contact the controller if needed.",
+      label: isTh ? "ไม่มีช่วงเปิดรับคิวปกติ" : "No normal request window",
+      description: isTh
+        ? "ปิดรับคิวตลอดเวลาสอบ กรุณาติดต่อผู้คุมสอบหลัก"
+        : "Requests closed. Ask the controller.",
       tone: "blocked",
     };
   }
   switch (status) {
     case "UNCONFIGURED":
       return {
-        label: "Unconfigured",
-        description:
-          "Exam start time and duration must be saved by the controller before staff submissions open.",
+        label: isTh ? "ยังไม่ตั้งเวลา" : "Unconfigured",
+        description: isTh ? "ยังไม่ได้ตั้งเวลาสอบ" : "Timer not set.",
         tone: "neutral",
       };
     case "BEFORE_START":
       return {
-        label: "Before Start (Blocked)",
-        description:
-          first === 0 ? "The queue opens when the exam starts." :
-          `The queue opens ${first} minutes after the exam starts.`,
+        label: isTh ? "ยังไม่เริ่มสอบ (ปิดคิว)" : "Before Start (Blocked)",
+        description: isTh
+          ? first === 0
+            ? "เปิดรับคิวเมื่อเริ่มสอบ"
+            : `เปิดรับคิวหลังเริ่มสอบ ${first} นาที`
+          : first === 0
+            ? "Opens at exam start."
+            : `Opens ${first} min after start.`,
         tone: "blocked",
       };
     case "FIRST_30_MIN":
       return {
-        label: `First ${first} Minutes (Blocked)`,
-        description:
-          `Requests are paused for the first ${first} minutes of the exam.`,
+        label: isTh
+          ? `${first} นาทีแรก (ปิดคิว)`
+          : `First ${first} Minutes (Blocked)`,
+        description: isTh
+          ? `เปิดรับคิวหลังเริ่มสอบ ${first} นาที`
+          : `Opens ${first} min after start.`,
         tone: "blocked",
       };
     case "ALLOWED":
       return {
-        label: "Bathroom Window Open",
-        description:
-          "Roaming staff can submit students and controller can mark entries into the bathroom.",
+        label: isTh ? "เปิดรับคิวเข้าห้องน้ำ" : "Bathroom Window Open",
+        description: isTh ? "ส่งคิวเข้าห้องน้ำได้ตามปกติ" : "Requests open.",
         tone: "allowed",
       };
     case "LAST_20_MIN":
       return {
-        label: `Last ${last} Minutes (Blocked)`,
-        description:
-          `Requests are paused for the final ${last} minutes of the exam.`,
+        label: isTh
+          ? `${last} นาทีสุดท้าย (ปิดคิว)`
+          : `Last ${last} Minutes (Blocked)`,
+        description: isTh
+          ? `งดรับคิว ${last} นาทีสุดท้ายก่อนหมดเวลา`
+          : `Final ${last} min. Requests closed.`,
         tone: "blocked",
       };
     case "AFTER_END":
       return {
-        label: "Exam Ended (Blocked)",
-        description:
-          "The exam duration has elapsed. Roaming staff submissions are closed.",
+        label: isTh ? "หมดเวลาสอบ (ปิดคิว)" : "Exam Ended (Blocked)",
+        description: isTh ? "ปิดรับคิวแล้ว" : "Requests closed.",
         tone: "blocked",
       };
   }
@@ -100,10 +118,10 @@ export function fromDateTimeLocalValue(value: string): number | null {
 export function windowBadgeClasses(tone: WindowStatusMeta["tone"]): string {
   switch (tone) {
     case "allowed":
-      return "border-emerald-300 bg-emerald-50 text-emerald-800";
+      return "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-700/70 dark:bg-emerald-950/60 dark:text-emerald-200";
     case "blocked":
-      return "border-rose-300 bg-rose-50 text-rose-800";
+      return "border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-700/70 dark:bg-rose-950/60 dark:text-rose-200";
     case "neutral":
-      return "border-amber-300 bg-amber-50 text-amber-900";
+      return "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700/70 dark:bg-amber-950/60 dark:text-amber-200";
   }
 }

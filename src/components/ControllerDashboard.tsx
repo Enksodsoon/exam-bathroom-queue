@@ -26,6 +26,7 @@ import {
 import type { UseNextStudentAlertResult } from "@/lib/client/useNextStudentAlert";
 import { usePushNotifications } from "@/lib/client/usePushNotifications";
 import { AlertBanner } from "./AlertBanner";
+import { useAppPreferences } from "./AppPreferencesProvider";
 import { ExamTimelineBar } from "./ExamTimelineBar";
 import {
   BellIcon,
@@ -43,6 +44,7 @@ import {
 import { PushAlertsButton, PushAlertsNotice } from "./PushAlertsButton";
 import { QrShareCard } from "./QrShareCard";
 import { QueueColumn } from "./QueueColumn";
+import { ThemeLangToggle } from "./ThemeLangToggle";
 
 interface ControllerDashboardProps {
   sessionId: string;
@@ -78,6 +80,7 @@ export function ControllerDashboard({
   alert,
   onMutationSnapshot,
 }: ControllerDashboardProps) {
+  const { locale, t } = useAppPreferences();
   const [activeDrawer, setActiveDrawer] = useState<ActiveDrawer>(null);
   const push = usePushNotifications(sessionId, { controllerKey });
   const timerBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -142,14 +145,14 @@ export function ControllerDashboard({
   if (!snapshot) {
     return (
       <div className="mx-auto max-w-4xl space-y-3 rounded-3xl border border-slate-200/90 bg-white p-8 text-center text-sm break-words [overflow-wrap:anywhere] text-slate-500 shadow-xs">
-        <p className="font-mono text-xs">Loading controller {sessionId}...</p>
+        <p className="text-xs">Connecting…</p>
         {syncError && (
           <div
             role="alert"
             data-testid="initial-sync-error"
             className="min-w-0 max-w-full rounded-2xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs break-words [overflow-wrap:anywhere] text-amber-900"
           >
-            Sync warning: {syncError} (retrying automatically)
+            Reconnecting…
           </div>
         )}
       </div>
@@ -170,7 +173,7 @@ export function ControllerDashboard({
       ? queueErrorState.text
       : null;
 
-  const windowMeta = describeWindowStatus(snapshot.windowStatus, snapshot.examConfig);
+  const windowMeta = describeWindowStatus(snapshot.windowStatus, snapshot.examConfig, locale);
 
   const savedBlocks = getExamBlockMinutes(snapshot.examConfig);
   const baseConfigValues: ConfigDraft = snapshot.examConfig
@@ -243,7 +246,7 @@ export function ControllerDashboard({
       setConfigMessageState({
         clearedSeq: currentClearedSeq,
         tone: "error",
-        text: "Duration must be a whole integer ≥ 1 min.",
+        text: "Use whole minutes (1 or more).",
       });
       return;
     }
@@ -252,7 +255,7 @@ export function ControllerDashboard({
       setConfigMessageState({
         clearedSeq: currentClearedSeq,
         tone: "error",
-        text: `Enter whole block lengths from 0 to ${MAX_BLOCK_MINUTES} minutes.`,
+        text: `Use whole minutes from 0 to ${MAX_BLOCK_MINUTES} minutes.`,
       });
       return;
     }
@@ -295,7 +298,7 @@ export function ControllerDashboard({
         setConfigMessageState({
           clearedSeq: res.snapshot.clearedSeq,
           tone: "success",
-          text: "Timer saved.",
+          text: t.timerSaved,
         });
       });
     } catch (err) {
@@ -525,7 +528,7 @@ export function ControllerDashboard({
   return (
     <div className="space-y-4">
       {/* Slim Focus-First Top Bar */}
-      <header className="rounded-3xl border border-slate-200/90 bg-white px-4 py-2.5 shadow-xs">
+      <header className="rounded-3xl border border-slate-200/90 bg-white px-4 py-2.5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-wrap items-center justify-between gap-2.5">
           <div className="flex min-w-0 flex-wrap items-center gap-2.5">
             <span
@@ -552,17 +555,17 @@ export function ControllerDashboard({
               compact
             />
 
-            <span className="font-mono text-xs text-slate-600 tabular-nums">
+            <span className="font-mono text-xs text-slate-600 tabular-nums dark:text-slate-400">
               {formatTimeOnly(snapshot.effectiveNowMs)}
             </span>
 
             {syncStale ? (
               <span
                 data-testid="sync-stale-badge"
-                className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-900"
+                className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-900 dark:bg-amber-950/70 dark:text-amber-200"
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-600" />
-                Stale
+                {t.reconnectingShort}
                 {lastSyncedAgeSeconds !== null
                   ? ` · ${lastSyncedAgeSeconds}s`
                   : ""}
@@ -570,8 +573,8 @@ export function ControllerDashboard({
             ) : (
               lastSyncedAtMs !== null && (
                 <span
-                  title="Live Sync"
-                  className="h-2 w-2 rounded-full bg-emerald-700"
+                  title={t.liveSync}
+                  className="h-2 w-2 rounded-full bg-emerald-700 dark:bg-emerald-400"
                 />
               )
             )}
@@ -585,15 +588,15 @@ export function ControllerDashboard({
               onClick={() => toggleDrawer("timer")}
               aria-expanded={activeDrawer === "timer"}
               aria-label="Exam Timer Settings"
-              title="Exam Timer Settings"
+              title={t.timerAria}
               className={`inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition focus:ring-2 focus:ring-slate-400 focus:outline-none ${
                 activeDrawer === "timer"
-                  ? "bg-slate-900 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
               }`}
             >
               <ClockIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">Timer</span>
+              <span className="hidden sm:inline">{t.timerButton}</span>
             </button>
 
             <button
@@ -602,15 +605,15 @@ export function ControllerDashboard({
               onClick={() => toggleDrawer("qr")}
               aria-expanded={activeDrawer === "qr"}
               aria-label="Share QR Code"
-              title="Share QR Code"
+              title={t.qrAria}
               className={`inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition focus:ring-2 focus:ring-slate-400 focus:outline-none ${
                 activeDrawer === "qr"
-                  ? "bg-slate-900 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
               }`}
             >
               <QrIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">QR</span>
+              <span className="hidden sm:inline">{t.qrButton}</span>
             </button>
 
             <button
@@ -619,11 +622,11 @@ export function ControllerDashboard({
               onClick={() => toggleDrawer("staff")}
               aria-expanded={activeDrawer === "staff"}
               aria-label="Connected Staff"
-              title="Checked In Staff"
+              title={t.staffDrawerTitle}
               className={`inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition focus:ring-2 focus:ring-slate-400 focus:outline-none ${
                 activeDrawer === "staff"
-                  ? "bg-slate-900 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
               }`}
             >
               <UsersIcon className="h-4 w-4" />
@@ -639,11 +642,11 @@ export function ControllerDashboard({
               onClick={alert.toggleMute}
               aria-pressed={alert.muted}
               aria-label={alert.muted ? "Unmute Alerts" : "Mute Alerts"}
-              title={alert.muted ? "Unmute Alerts" : "Mute Alerts"}
+              title={alert.muted ? t.unmuteAlerts : t.muteAlerts}
               className={`inline-flex h-11 w-11 items-center justify-center rounded-full transition ${
                 alert.muted
-                  ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  ? "bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-950/70 dark:text-amber-200"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
               }`}
             >
               {alert.muted ? (
@@ -661,16 +664,16 @@ export function ControllerDashboard({
                   setClearMessage(null);
                 }}
                 aria-label="Clear Session"
-                title="Clear Session"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-rose-50 text-rose-600 transition hover:bg-rose-100"
+                title={t.clearSessionAria}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-rose-50 text-rose-600 transition hover:bg-rose-100 dark:bg-rose-950/60 dark:text-rose-300 dark:hover:bg-rose-900/60"
               >
                 <ResetIcon className="h-4 w-4" />
               </button>
             ) : (
-              <div className="flex flex-wrap items-center gap-1.5 rounded-full bg-rose-50 p-1">
+              <div className="flex flex-wrap items-center gap-1.5 rounded-full bg-rose-50 p-1 dark:bg-rose-950/60">
                 {activeInBathroom.length > 0 && (
-                  <span className="px-2 text-[11px] font-semibold text-rose-900">
-                    Out:{" "}
+                  <span className="px-2 text-[11px] font-semibold text-rose-900 dark:text-rose-200">
+                    {t.outPrefix}{" "}
                     {activeInBathroom
                       .map((e) => `#${e.studentNumber}`)
                       .join(", ")}
@@ -687,41 +690,38 @@ export function ControllerDashboard({
                   {clearingSession
                     ? "..."
                     : activeInBathroom.length > 0
-                      ? "Force Clear"
-                      : "Confirm Clear"}
+                      ? t.forceClear
+                      : t.confirmClear}
                 </button>
                 <button
                   type="button"
                   disabled={clearingSession}
                   onClick={() => setConfirmingClear(false)}
                   aria-label="Cancel"
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 hover:bg-slate-100"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-200"
                 >
                   <CloseIcon className="h-3.5 w-3.5" />
                 </button>
               </div>
             )}
+
+            <ThemeLangToggle />
           </div>
         </div>
 
-        <PushAlertsNotice push={push} />
+        <PushAlertsNotice push={push} onTestTabAlert={alert.testTabAlert} />
 
-        {syncError && (
-          <div
-            role="status"
-            className="mt-2.5 min-w-0 max-w-full rounded-2xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs break-words [overflow-wrap:anywhere] text-amber-900"
-          >
-            Sync warning: {syncError} (retrying automatically)
-          </div>
-        )}
+        <span role="status" className="sr-only">
+          {syncStale ? t.reconnectingNotice : ""}
+        </span>
 
         {clearMessage && (
           <div
             role={clearMessage.tone === "error" ? "alert" : "status"}
             className={`mt-2.5 min-w-0 max-w-full rounded-2xl border px-3 py-1.5 text-xs font-medium break-words [overflow-wrap:anywhere] ${
               clearMessage.tone === "error"
-                ? "border-rose-200 bg-rose-50 text-rose-800"
-                : "border-emerald-200 bg-emerald-50 text-emerald-800"
+                ? "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-200"
+                : "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200"
             }`}
           >
             {clearMessage.text}
@@ -732,16 +732,14 @@ export function ControllerDashboard({
       {!syncStale && (!snapshot.examConfig || snapshot.staff.length === 0) && (
         <section
           aria-label="Exam setup"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-emerald-200 bg-emerald-50 px-5 py-3"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-emerald-200 bg-emerald-50 px-5 py-3 dark:border-emerald-800/70 dark:bg-emerald-950/50"
         >
           <div>
-            <p className="text-sm font-semibold text-emerald-950">
-              {snapshot.examConfig ? "2 of 2 · Invite your proctors" : "1 of 2 · Set up the exam"}
+            <p className="text-sm font-semibold text-emerald-950 dark:text-emerald-100">
+              {snapshot.examConfig ? t.setupStep2Title : t.setupStep1Title}
             </p>
-            <p className="mt-0.5 text-sm text-emerald-900">
-              {snapshot.examConfig
-                ? "Share the staff QR or link. This step clears once the first proctor joins."
-                : "Choose the start time and duration before opening the queue."}
+            <p className="mt-0.5 text-sm text-emerald-900 dark:text-emerald-200">
+              {snapshot.examConfig ? t.setupStep2Body : t.setupStep1Body}
             </p>
           </div>
           <button
@@ -752,9 +750,9 @@ export function ControllerDashboard({
               if (activeDrawer !== drawer) toggleDrawer(drawer);
               button?.focus();
             }}
-            className="inline-flex min-h-[44px] items-center rounded-full bg-emerald-900 px-5 text-sm font-semibold text-white hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-900"
+            className="inline-flex min-h-[44px] items-center rounded-full bg-emerald-900 px-5 text-sm font-semibold text-white hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-900 dark:bg-emerald-600 dark:hover:bg-emerald-500"
           >
-            {snapshot.examConfig ? "Invite proctors" : "Set exam timer"}
+            {snapshot.examConfig ? t.setupStep2Btn : t.setupStep1Btn}
           </button>
         </section>
       )}
@@ -763,20 +761,20 @@ export function ControllerDashboard({
       {activeDrawer === "timer" && (
         <section
           aria-label="Exam Time-Window Configuration"
-          className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs"
+          className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900"
         >
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <ClockIcon className="h-4 w-4 text-slate-500" />
-              <h2 className="text-sm font-semibold text-slate-900">
-                Exam Timer
+              <ClockIcon className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                {t.timerDrawerTitle}
               </h2>
             </div>
             <button
               type="button"
               onClick={closeDrawer}
               aria-label="Close Timer"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:ring-2 focus:ring-slate-400 focus:outline-none"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:ring-2 focus:ring-slate-400 focus:outline-none dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
             >
               <CloseIcon className="h-4 w-4" />
             </button>
@@ -806,9 +804,9 @@ export function ControllerDashboard({
                     exactStartMs: snapshot.serverNowMs,
                   })
                 }
-                className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-emerald-500/12 px-3.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-500/20"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-emerald-500/12 px-3.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300"
               >
-                Start Now
+                {t.setStartNow}
               </button>
               {[90, 120, 180].map((mins) => (
                 <button
@@ -819,8 +817,8 @@ export function ControllerDashboard({
                   }
                   className={`inline-flex min-h-[44px] items-center justify-center rounded-full border px-3.5 text-xs font-semibold transition ${
                     activeConfig.durationMinutes === String(mins)
-                      ? "border-slate-900 bg-slate-900 text-white"
-                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                      ? "border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900"
+                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                   }`}
                 >
                   {mins}m
@@ -832,7 +830,7 @@ export function ControllerDashboard({
                     key={mins}
                     type="button"
                     onClick={() => updateDraft({ offsetMinutes: String(mins) })}
-                    className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-3 text-xs font-mono font-medium text-slate-700 hover:bg-slate-100"
+                    className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-3 text-xs font-mono font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                   >
                     {mins > 0 ? `+${mins}m` : `${mins}m`}
                   </button>
@@ -843,9 +841,9 @@ export function ControllerDashboard({
               <div>
                 <label
                   htmlFor="exam-start-time"
-                  className="mb-1 block text-[11px] font-medium text-slate-600"
+                  className="mb-1 block text-[11px] font-medium text-slate-600 dark:text-slate-400"
                 >
-                  Start
+                  {t.startTimeLabel}
                 </label>
                 <input
                   id="exam-start-time"
@@ -858,16 +856,16 @@ export function ControllerDashboard({
                       exactStartMs: null,
                     })
                   }
-                  className="min-h-[44px] w-full rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-1.5 text-xs text-slate-900 focus:border-slate-900 focus:bg-white focus:outline-none"
+                  className="min-h-[44px] w-full rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-1.5 text-xs text-slate-900 focus:border-slate-900 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-400"
                 />
               </div>
 
               <div>
                 <label
                   htmlFor="exam-duration-minutes"
-                  className="mb-1 block text-[11px] font-medium text-slate-600"
+                  className="mb-1 block text-[11px] font-medium text-slate-600 dark:text-slate-400"
                 >
-                  Duration (min)
+                  {t.durationMinLabel}
                 </label>
                 <input
                   id="exam-duration-minutes"
@@ -880,7 +878,7 @@ export function ControllerDashboard({
                     updateDraft({ durationMinutes: e.target.value });
                     setConfirmShortDuration(false);
                   }}
-                  className="min-h-[44px] w-full rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-1.5 font-mono text-xs text-slate-900 focus:border-slate-900 focus:bg-white focus:outline-none"
+                  className="min-h-[44px] w-full rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-1.5 font-mono text-xs text-slate-900 focus:border-slate-900 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-400"
                 />
               </div>
 
@@ -888,9 +886,9 @@ export function ControllerDashboard({
                 <div>
                   <label
                     htmlFor="exam-clock-offset"
-                    className="mb-1 block text-[11px] font-medium text-slate-600"
+                    className="mb-1 block text-[11px] font-medium text-slate-600 dark:text-slate-400"
                   >
-                    Offset (min)
+                    {t.offsetMinLabel}
                   </label>
                   <input
                     id="exam-clock-offset"
@@ -901,20 +899,20 @@ export function ControllerDashboard({
                     onChange={(e) =>
                       updateDraft({ offsetMinutes: e.target.value })
                     }
-                    className="min-h-[44px] w-full rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-1.5 font-mono text-xs text-slate-900 focus:border-slate-900 focus:bg-white focus:outline-none"
+                    className="min-h-[44px] w-full rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-1.5 font-mono text-xs text-slate-900 focus:border-slate-900 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-400"
                   />
                 </div>
               )}
             </div>
 
-            <fieldset className="space-y-2 rounded-2xl border border-slate-200 px-3 pb-3">
-              <legend className="px-1 text-xs font-semibold text-slate-700">Bathroom request blocks</legend>
+            <fieldset className="space-y-2 rounded-2xl border border-slate-200 px-3 pb-3 dark:border-slate-700">
+              <legend className="px-1 text-xs font-semibold text-slate-700 dark:text-slate-300">{t.blocksLegend}</legend>
               <div className="grid grid-cols-2 gap-3">
                 {([
-                  ["firstBlockMinutes", "Block first (minutes)"],
-                  ["lastBlockMinutes", "Block last (minutes)"],
+                  ["firstBlockMinutes", t.blockFirstLabel],
+                  ["lastBlockMinutes", t.blockLastLabel],
                 ] as const).map(([field, label]) => (
-                  <label key={field} className="block text-xs font-medium text-slate-700">
+                  <label key={field} className="block text-xs font-medium text-slate-700 dark:text-slate-300">
                     {label}
                     <input
                       type="number"
@@ -923,26 +921,27 @@ export function ControllerDashboard({
                       step={1}
                       value={activeConfig[field]}
                       onChange={(e) => updateDraft({ [field]: e.target.value })}
-                      className="mt-1 block min-h-[44px] w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-sm text-slate-950 focus:outline-2 focus:outline-offset-2 focus:outline-slate-700"
+                      className="mt-1 block min-h-[44px] w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-sm text-slate-950 focus:outline-2 focus:outline-offset-2 focus:outline-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     />
                   </label>
                 ))}
               </div>
               <div className="flex flex-wrap items-center justify-between gap-1">
-                <p className="text-xs text-slate-700">
-                  0 means no block. {openMinutes !== null && <>Normal request window: <strong>{openMinutes} min</strong>.</>}
+                <p className="text-xs text-slate-700 dark:text-slate-300">
+                  {openMinutes !== null && <>{t.normalWindowLabel} <strong>{openMinutes} min</strong>.</>}
                 </p>
+                <span className="text-xs text-slate-600 dark:text-slate-400">{t.blocksZeroHint}</span>
                 <button type="button" onClick={() => updateDraft({
                   firstBlockMinutes: String(FIRST_BLOCK_MINUTES),
                   lastBlockMinutes: String(LAST_BLOCK_MINUTES),
-                })} className="min-h-[44px] px-2 text-xs font-medium text-slate-700 underline">
-                  Reset to 30 / 20
+                })} className="min-h-[44px] px-2 text-xs font-medium text-slate-700 underline dark:text-slate-300">
+                  {t.resetBlocksBtn}
                 </button>
               </div>
             </fieldset>
 
             {showShortDurationWarning && (
-              <label className="flex cursor-pointer items-center gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs font-medium text-amber-900">
+              <label className="flex cursor-pointer items-center gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs font-medium text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200">
                 <input
                   type="checkbox"
                   checked={confirmShortDuration}
@@ -950,7 +949,7 @@ export function ControllerDashboard({
                   className="h-4 w-4 shrink-0 rounded border-amber-400 text-amber-800"
                 />
                 <span>
-                  These blocks leave no normal bathroom window. Confirm override-only exam.
+                  {t.confirmOverrideOnlyLabel}
                 </span>
               </label>
             )}
@@ -960,8 +959,8 @@ export function ControllerDashboard({
                 role={configMessage.tone === "error" ? "alert" : "status"}
                 className={`min-w-0 max-w-full rounded-2xl border px-3 py-2 text-xs font-medium break-words [overflow-wrap:anywhere] ${
                   configMessage.tone === "error"
-                    ? "border-rose-200 bg-rose-50 text-rose-800"
-                    : "border-emerald-200 bg-emerald-50 text-emerald-800"
+                    ? "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-200"
+                    : "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200"
                 }`}
               >
                 {configMessage.text}
@@ -971,9 +970,10 @@ export function ControllerDashboard({
             <button
               type="submit"
               disabled={savingConfig}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-slate-900 px-6 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
+              aria-label="Save Exam Config"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-slate-900 px-6 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
             >
-              {savingConfig ? "Saving..." : "Save Exam Config"}
+              {savingConfig ? t.savingConfig : t.saveExamConfig}
             </button>
           </form>
         </section>
@@ -993,35 +993,35 @@ export function ControllerDashboard({
       {activeDrawer === "staff" && (
         <section
           aria-label="Checked In Staff"
-          className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs"
+          className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900"
         >
           <div className="mb-3 flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-slate-900">
-              Checked In ({snapshot.staff.length})
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              {t.staffDrawerTitle} ({snapshot.staff.length})
             </h2>
             <button
               type="button"
               onClick={closeDrawer}
               aria-label="Close Staff List"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:ring-2 focus:ring-slate-400 focus:outline-none"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:ring-2 focus:ring-slate-400 focus:outline-none dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
             >
               <CloseIcon className="h-4 w-4" />
             </button>
           </div>
           {snapshot.staff.length === 0 ? (
-            <p className="text-xs text-slate-600">
-              No roaming staff checked in yet.
+            <p className="text-xs text-slate-600 dark:text-slate-400">
+              {t.noStaffJoined}
             </p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {snapshot.staff.map((member) => (
                 <span
                   key={member.id}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-800"
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 >
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-700" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-700 dark:bg-emerald-400" />
                   <span className="max-w-[160px] truncate">{member.label}</span>
-                  <span className="font-mono text-[11px] text-slate-600">
+                  <span className="font-mono text-[11px] text-slate-600 dark:text-slate-400">
                     {formatTimeOnly(member.joinedAt)}
                   </span>
                 </span>
@@ -1046,7 +1046,7 @@ export function ControllerDashboard({
       {/* Slim Inline Quick-Add Bar */}
       <section
         aria-label="Controller Add Student"
-        className="rounded-3xl border border-slate-200/90 bg-white p-3.5 shadow-xs"
+        className="rounded-3xl border border-slate-200/90 bg-white p-3.5 shadow-xs dark:border-slate-800 dark:bg-slate-900"
       >
         <form
           onSubmit={(e) => {
@@ -1055,7 +1055,7 @@ export function ControllerDashboard({
           className="flex flex-wrap items-center gap-2"
           noValidate
         >
-          <div className="flex items-center gap-1 rounded-full bg-slate-100 p-1">
+          <div className="flex items-center gap-1 rounded-full bg-slate-100 p-1 dark:bg-slate-800">
             <button
               type="button"
               aria-pressed={addSex === "M"}
@@ -1064,7 +1064,7 @@ export function ControllerDashboard({
               className={`inline-flex h-11 items-center gap-1 rounded-full px-3.5 text-xs font-semibold transition ${
                 addSex === "M"
                   ? "bg-sky-600 text-white shadow-2xs"
-                  : "text-slate-600 hover:text-slate-900"
+                  : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
               }`}
             >
               <MaleIcon className="h-3.5 w-3.5" />
@@ -1078,7 +1078,7 @@ export function ControllerDashboard({
               className={`inline-flex h-11 items-center gap-1 rounded-full px-3.5 text-xs font-semibold transition ${
                 addSex === "F"
                   ? "bg-rose-600 text-white shadow-2xs"
-                  : "text-slate-600 hover:text-slate-900"
+                  : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
               }`}
             >
               <FemaleIcon className="h-3.5 w-3.5" />
@@ -1101,8 +1101,8 @@ export function ControllerDashboard({
                 setStudentMessageState(null);
               }
             }}
-            placeholder="Student #"
-            className="min-h-[44px] min-w-[120px] flex-1 rounded-full border border-slate-200 bg-slate-50/70 px-4 py-2 font-mono text-sm font-semibold text-slate-900 placeholder:font-sans placeholder:font-normal placeholder:text-slate-400 focus:border-slate-900 focus:bg-white focus:outline-none"
+            placeholder={t.studentNumberPlaceholder}
+            className="min-h-[44px] min-w-[120px] flex-1 rounded-full border border-slate-200 bg-slate-50/70 px-4 py-2 font-mono text-sm font-semibold text-slate-900 placeholder:font-sans placeholder:font-normal placeholder:text-slate-400 focus:border-slate-900 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-400"
           />
 
           <button
@@ -1114,22 +1114,22 @@ export function ControllerDashboard({
             onClick={() => setOverrideEnabled((prev) => !prev)}
             className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition ${
               overrideEnabled
-                ? "border-purple-300 bg-purple-100 text-purple-800"
-                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                ? "border-purple-300 bg-purple-100 text-purple-800 dark:border-purple-700 dark:bg-purple-950/70 dark:text-purple-200"
+                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
             }`}
           >
             <ShieldIcon className="h-3.5 w-3.5" />
-            <span>Override</span>
+            <span>{t.overrideLabel}</span>
           </button>
 
           <button
             type="submit"
             disabled={submittingStudent}
             aria-label="Add Student"
-            className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-full bg-slate-900 px-5 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
+            className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-full bg-slate-900 px-5 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
           >
             <PlusIcon className="h-4 w-4" />
-            <span>{submittingStudent ? "..." : "Add"}</span>
+            <span>{submittingStudent ? "..." : t.addToQueueBtn}</span>
           </button>
         </form>
 
@@ -1139,8 +1139,8 @@ export function ControllerDashboard({
             data-testid="controller-add-message"
             className={`mt-2.5 min-w-0 max-w-full rounded-2xl border px-3.5 py-2 text-xs font-medium break-words [overflow-wrap:anywhere] ${
               studentMessage.tone === "error"
-                ? "border-rose-200 bg-rose-50 text-rose-800"
-                : "border-emerald-200 bg-emerald-50 text-emerald-800"
+                ? "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-200"
+                : "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200"
             }`}
           >
             {studentMessage.text}
@@ -1153,7 +1153,7 @@ export function ControllerDashboard({
         <div
           role="alert"
           data-testid="controller-queue-error"
-          className="min-w-0 max-w-full rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-medium break-words [overflow-wrap:anywhere] text-rose-900"
+          className="min-w-0 max-w-full rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-medium break-words [overflow-wrap:anywhere] text-rose-900 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-200"
         >
           {queueError}
         </div>

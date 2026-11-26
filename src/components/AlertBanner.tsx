@@ -1,6 +1,7 @@
 "use client";
 
 import type { AlertInfo } from "@/lib/domain/types";
+import { useAppPreferences } from "./AppPreferencesProvider";
 import { BellIcon, BellOffIcon, CloseIcon } from "./Icons";
 
 interface AlertBannerProps {
@@ -24,6 +25,7 @@ export function AlertBanner({
   onDismiss,
   hideMuteControl = false,
 }: AlertBannerProps) {
+  const { t } = useAppPreferences();
   return (
     <div
       data-testid="alert-telemetry"
@@ -69,21 +71,21 @@ export function AlertBanner({
           role="alert"
           aria-live="assertive"
           data-testid="next-student-alert"
-          className="flex min-w-0 max-w-full items-center justify-between gap-3 rounded-3xl border border-emerald-300 bg-emerald-50/90 px-4 py-3 text-emerald-950 shadow-xs"
+          className="flex min-w-0 max-w-full items-center justify-between gap-3 rounded-3xl border border-emerald-300 bg-emerald-50/90 px-4 py-3 text-emerald-950 shadow-xs dark:border-emerald-700/70 dark:bg-emerald-950/70 dark:text-emerald-100"
         >
           <div className="flex min-w-0 max-w-full items-center gap-3">
             <span
               className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
                 activeAlert.sex === "M"
-                  ? "bg-sky-500/15 text-sky-700"
-                  : "bg-rose-500/15 text-rose-700"
+                  ? "bg-sky-500/15 text-sky-700 dark:bg-sky-500/25 dark:text-sky-300"
+                  : "bg-rose-500/15 text-rose-700 dark:bg-rose-500/25 dark:text-rose-300"
               }`}
             >
               {activeAlert.sex === "M" ? "♂" : "♀"}
             </span>
             <div className="min-w-0 max-w-full">
-              <p className="text-[11px] font-semibold tracking-wider text-emerald-700 uppercase">
-                Next {activeAlert.sex === "M" ? "Male" : "Female"}
+              <p className="text-[11px] font-semibold tracking-wider text-emerald-700 uppercase dark:text-emerald-300">
+                {t.nextUp} {activeAlert.sex === "M" ? t.male : t.female}
               </p>
               <p className="min-w-0 max-w-full font-mono text-base font-bold break-words [overflow-wrap:anywhere] tabular-nums">
                 #{activeAlert.studentNumber}
@@ -94,7 +96,7 @@ export function AlertBanner({
             type="button"
             onClick={onDismiss}
             aria-label="Dismiss"
-            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-emerald-800 shadow-2xs transition hover:bg-emerald-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-emerald-800 shadow-2xs transition hover:bg-emerald-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none dark:bg-emerald-900 dark:text-emerald-100 dark:hover:bg-emerald-800"
           >
             <CloseIcon className="h-4 w-4" />
           </button>
