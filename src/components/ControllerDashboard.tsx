@@ -23,6 +23,7 @@ import {
   windowBadgeClasses,
 } from "@/lib/client/format";
 import type { UseNextStudentAlertResult } from "@/lib/client/useNextStudentAlert";
+import { usePushNotifications } from "@/lib/client/usePushNotifications";
 import { AlertBanner } from "./AlertBanner";
 import { ExamTimelineBar } from "./ExamTimelineBar";
 import {
@@ -38,6 +39,7 @@ import {
   ShieldIcon,
   UsersIcon,
 } from "./Icons";
+import { PushAlertsButton, PushAlertsNotice } from "./PushAlertsButton";
 import { QrShareCard } from "./QrShareCard";
 import { QueueColumn } from "./QueueColumn";
 
@@ -74,6 +76,7 @@ export function ControllerDashboard({
   onMutationSnapshot,
 }: ControllerDashboardProps) {
   const [activeDrawer, setActiveDrawer] = useState<ActiveDrawer>(null);
+  const push = usePushNotifications(sessionId, { controllerKey });
   const timerBtnRef = useRef<HTMLButtonElement | null>(null);
   const qrBtnRef = useRef<HTMLButtonElement | null>(null);
   const staffBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -603,6 +606,8 @@ export function ControllerDashboard({
               </span>
             </button>
 
+            <PushAlertsButton push={push} />
+
             <button
               type="button"
               onClick={alert.toggleMute}
@@ -672,6 +677,8 @@ export function ControllerDashboard({
             )}
           </div>
         </div>
+
+        <PushAlertsNotice push={push} />
 
         {syncError && (
           <div

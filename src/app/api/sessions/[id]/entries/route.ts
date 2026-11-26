@@ -8,6 +8,7 @@ import {
 } from "@/lib/api/http";
 import { readJsonBody, validateSubmitEntryBody } from "@/lib/api/validation";
 import { submitStudent, toSessionSnapshot } from "@/lib/domain";
+import { sendNextStudentPushNotifications } from "@/lib/push/sendPush";
 import { getSessionStore } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +25,10 @@ export async function POST(
       input.override === true ? requireControllerKeyHeader(request) : null;
 
     const store = getSessionStore();
-    const { session, result: entry } = await store.mutate(id, (current) => {
+    const {
+      session,
+      result: { entry, prevAlertSeq },
+    } = await store.mutate(id, (current) => {
       if (providedControllerKey !== null) {
         verifyControllerKey(current.controllerKey, providedControllerKey);
       }
@@ -46,8 +50,13 @@ export async function POST(
             },
         nowMs,
       );
-      return { session: next.session, result: next.entry };
+      return {
+        session: next.session,
+        result: { entry: next.entry, prevAlertSeq: current.alertSeq },
+      };
     });
+
+    await sendNextStudentPushNotifications(id, session, prevAlertSeq);
 
     const snapshot = toSessionSnapshot(session, Date.now());
     return apiJson({ entry, snapshot }, 201);

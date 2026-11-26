@@ -7,6 +7,7 @@ import {
 } from "@/lib/api/http";
 import { readJsonBody, validateEntryActionBody } from "@/lib/api/validation";
 import { applyEntryAction, toSessionSnapshot } from "@/lib/domain";
+import { sendNextStudentPushNotifications } from "@/lib/push/sendPush";
 import { getSessionStore } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
@@ -22,20 +23,25 @@ export async function POST(
     const actionInput = validateEntryActionBody(body);
 
     const store = getSessionStore();
-    const { session } = await store.mutate(id, (current) => {
-      verifyControllerKey(current.controllerKey, providedKey);
-      const nowMs = Date.now();
-      const next = applyEntryAction(
-        current,
-        {
-          entryId,
-          action: actionInput.action,
-          override: actionInput.override,
-        },
-        nowMs,
-      );
-      return { session: next.session, result: next.entry };
-    });
+    const { session, result: prevAlertSeq } = await store.mutate(
+      id,
+      (current) => {
+        verifyControllerKey(current.controllerKey, providedKey);
+        const nowMs = Date.now();
+        const next = applyEntryAction(
+          current,
+          {
+            entryId,
+            action: actionInput.action,
+            override: actionInput.override,
+          },
+          nowMs,
+        );
+        return { session: next.session, result: current.alertSeq };
+      },
+    );
+
+    await sendNextStudentPushNotifications(id, session, prevAlertSeq);
 
     const snapshot = toSessionSnapshot(session, Date.now());
     return apiJson({ snapshot }, 200);

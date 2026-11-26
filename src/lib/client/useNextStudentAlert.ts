@@ -346,6 +346,27 @@ export function useNextStudentAlert(
               vibrateDelta += 1;
             }
           }
+
+          if (
+            typeof document !== "undefined" &&
+            document.visibilityState === "hidden" &&
+            typeof Notification !== "undefined" &&
+            Notification.permission === "granted" &&
+            "serviceWorker" in navigator
+          ) {
+            const sexLabel = evaluation.alert.sex === "M" ? "Male" : "Female";
+            void navigator.serviceWorker.ready
+              .then((reg) =>
+                reg.showNotification(`ExamQ · Next ${sexLabel}`, {
+                  body: `#${evaluation.alert.studentNumber} is next in the ${sexLabel.toLowerCase()} queue.`,
+                  icon: "/icons/icon-192.png",
+                  badge: "/icons/icon-192.png",
+                  tag: `examq-next-${evaluation.alert.sex}`,
+                  renotify: true,
+                } as NotificationOptions),
+              )
+              .catch(() => {});
+          }
         }
 
         const isStillNext =

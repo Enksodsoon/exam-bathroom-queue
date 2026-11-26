@@ -48,12 +48,23 @@ export interface NextBySex {
   F: string | null;
 }
 
+export interface PushSubscriptionRecord {
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+  actorKey: string;
+  updatedAt: number;
+}
+
 export interface ExamSession {
   id: string;
   controllerKey: string;
   inviteCode?: string;
   inviteVersion?: number;
   staffTokens?: Record<string, string>;
+  pushSubscriptions?: PushSubscriptionRecord[];
   createdAt: number;
   version: number;
   clearedSeq: number;

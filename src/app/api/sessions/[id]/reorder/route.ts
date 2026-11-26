@@ -7,6 +7,7 @@ import {
 } from "@/lib/api/http";
 import { readJsonBody, validateReorderBody } from "@/lib/api/validation";
 import { reorderQueuedEntry, toSessionSnapshot } from "@/lib/domain";
+import { sendNextStudentPushNotifications } from "@/lib/push/sendPush";
 import { getSessionStore } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
@@ -22,12 +23,17 @@ export async function POST(
     const reorderInput = validateReorderBody(body);
 
     const store = getSessionStore();
-    const { session } = await store.mutate(id, (current) => {
-      verifyControllerKey(current.controllerKey, providedKey);
-      const nowMs = Date.now();
-      const nextSession = reorderQueuedEntry(current, reorderInput, nowMs);
-      return { session: nextSession, result: null };
-    });
+    const { session, result: prevAlertSeq } = await store.mutate(
+      id,
+      (current) => {
+        verifyControllerKey(current.controllerKey, providedKey);
+        const nowMs = Date.now();
+        const nextSession = reorderQueuedEntry(current, reorderInput, nowMs);
+        return { session: nextSession, result: current.alertSeq };
+      },
+    );
+
+    await sendNextStudentPushNotifications(id, session, prevAlertSeq);
 
     const snapshot = toSessionSnapshot(session, Date.now());
     return apiJson({ snapshot }, 200);

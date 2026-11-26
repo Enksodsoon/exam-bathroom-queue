@@ -10,6 +10,7 @@ import {
   windowBadgeClasses,
 } from "@/lib/client/format";
 import type { UseNextStudentAlertResult } from "@/lib/client/useNextStudentAlert";
+import { usePushNotifications } from "@/lib/client/usePushNotifications";
 import { AlertBanner } from "./AlertBanner";
 import { ExamTimelineBar } from "./ExamTimelineBar";
 import {
@@ -21,6 +22,7 @@ import {
   MaleIcon,
   UserBadgeIcon,
 } from "./Icons";
+import { PushAlertsButton, PushAlertsNotice } from "./PushAlertsButton";
 import { QueueColumn } from "./QueueColumn";
 
 interface StaffViewProps {
@@ -62,6 +64,9 @@ export function StaffView({
     clearedSeq: number;
     text: string;
   } | null>(null);
+  const push = usePushNotifications(sessionId, {
+    staffToken: staffIdentity.staffToken,
+  });
 
   if (!snapshot) {
     return (
@@ -210,7 +215,9 @@ export function StaffView({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <PushAlertsButton push={push} />
+
             <button
               type="button"
               onClick={alert.toggleMute}
@@ -243,6 +250,8 @@ export function StaffView({
             </button>
           </div>
         </div>
+
+        <PushAlertsNotice push={push} />
 
         {syncError && (
           <div

@@ -6,6 +6,7 @@ import {
   type ExamConfig,
   type ExamSession,
   type NextBySex,
+  type PushSubscriptionRecord,
   type QueueEntry,
   type ReorderInput,
   type SessionSnapshot,
@@ -22,6 +23,7 @@ const MAX_STAFF_LABEL_LENGTH = 40;
 const MAX_STUDENT_NUMBER_LENGTH = 32;
 const MAX_ENTRIES_PER_SESSION = 500;
 const MAX_STAFF_PER_SESSION = 50;
+const MAX_PUSH_SUBSCRIPTIONS = 50;
 
 function defaultIdGenerator(): string {
   if (typeof globalThis.crypto?.randomUUID === "function") {
@@ -97,6 +99,16 @@ function cloneSession(session: ExamSession): ExamSession {
       : {}),
     ...(session.staffTokens !== undefined
       ? { staffTokens: { ...session.staffTokens } }
+      : {}),
+    ...(session.pushSubscriptions !== undefined
+      ? {
+          pushSubscriptions: session.pushSubscriptions.map((sub) => ({
+            endpoint: sub.endpoint,
+            keys: { ...sub.keys },
+            actorKey: sub.actorKey,
+            updatedAt: sub.updatedAt,
+          })),
+        }
       : {}),
     createdAt: session.createdAt,
     version: session.version,
@@ -703,5 +715,73 @@ export function clearSession(
     lastNextAlert: null,
     clearedSeq: session.clearedSeq + 1,
     version: session.version + 1,
+  };
+}
+
+export function upsertPushSubscription(
+  session: ExamSession,
+  input: {
+    endpoint: string;
+    keys: { p256dh: string; auth: string };
+    actorKey: string;
+  },
+  nowMs: number = Date.now(),
+): ExamSession {
+  assertFiniteNow(nowMs);
+  const endpoint = input.endpoint.trim();
+  const cloned = cloneSession(session);
+  const existing = cloned.pushSubscriptions ?? [];
+  const filtered = existing.filter((s) => s.endpoint !== endpoint);
+  const nextRecord: PushSubscriptionRecord = {
+    endpoint,
+    keys: {
+      p256dh: input.keys.p256dh,
+      auth: input.keys.auth,
+    },
+    actorKey: input.actorKey,
+    updatedAt: nowMs,
+  };
+  const nextSubs = [...filtered, nextRecord].slice(-MAX_PUSH_SUBSCRIPTIONS);
+
+  return {
+    ...cloned,
+    pushSubscriptions: nextSubs,
+  };
+}
+
+export function removePushSubscription(
+  session: ExamSession,
+  endpoint: string,
+): ExamSession {
+  const trimmed = endpoint.trim();
+  const existing = session.pushSubscriptions ?? [];
+  const nextSubs = existing.filter((s) => s.endpoint !== trimmed);
+  if (nextSubs.length === existing.length) {
+    return session;
+  }
+  const cloned = cloneSession(session);
+  return {
+    ...cloned,
+    pushSubscriptions: nextSubs,
+  };
+}
+
+export function prunePushSubscriptions(
+  session: ExamSession,
+  expiredEndpoints: string[],
+): ExamSession {
+  if (expiredEndpoints.length === 0) {
+    return session;
+  }
+  const expiredSet = new Set(expiredEndpoints.map((e) => e.trim()));
+  const existing = session.pushSubscriptions ?? [];
+  const nextSubs = existing.filter((s) => !expiredSet.has(s.endpoint));
+  if (nextSubs.length === existing.length) {
+    return session;
+  }
+  const cloned = cloneSession(session);
+  return {
+    ...cloned,
+    pushSubscriptions: nextSubs,
   };
 }
