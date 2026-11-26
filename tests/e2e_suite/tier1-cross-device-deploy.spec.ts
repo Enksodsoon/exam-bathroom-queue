@@ -223,7 +223,10 @@ test.describe('Tier 1 — Cross-Device UI, Multi-Client & Deployment Health (F-D
     const req2 = await playwright.request.newContext({ baseURL });
     try {
       const api2 = new ExamQApiClient(req2);
-      const snap = await api2.getSnapshot(s.sessionId);
+      const unauth = await api2.getSnapshot(s.sessionId, undefined, null);
+      expect(unauth.status).toBe(401);
+
+      const snap = await api2.getSnapshot(s.sessionId, undefined, s.controllerKey);
       expect(snap.status).toBe(200);
       if (snap.body.unchanged) throw new Error('Expected full snapshot');
       expect(snap.body.snapshot.entries.map((e) => e.studentNumber)).toEqual([

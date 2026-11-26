@@ -317,7 +317,7 @@ test.describe('Tier 4 — Exam-Day Operational Workflows, Isolation & Persistenc
     const ctx2 = await browser.newContext();
     try {
       const api2 = new ExamQApiClient(req2);
-      const snap = await api2.getSnapshot(s.sessionId);
+      const snap = await api2.getSnapshot(s.sessionId, undefined, s.controllerKey);
       expect(snap.status).toBe(200);
       if (snap.body.unchanged) throw new Error('Expected snapshot');
       expect(snap.body.snapshot.entries.map((e) => e.studentNumber)).toContain(

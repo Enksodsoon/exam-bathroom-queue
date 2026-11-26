@@ -1,5 +1,10 @@
 import type { NextRequest } from "next/server";
-import { ApiHttpError, apiJson, handleApiError } from "@/lib/api/http";
+import {
+  ApiHttpError,
+  apiJson,
+  handleApiError,
+  verifyActorAuth,
+} from "@/lib/api/http";
 import { parseSinceVersion } from "@/lib/api/validation";
 import { evaluateExamWindow, toSessionSnapshot } from "@/lib/domain";
 import { getSessionStore } from "@/lib/storage";
@@ -21,6 +26,8 @@ export async function GET(
     if (!session) {
       throw new ApiHttpError(404, "NOT_FOUND", `Session '${id}' not found`);
     }
+
+    verifyActorAuth(request, session);
 
     const nowMs = Date.now();
     if (sinceVersion !== null && sinceVersion === session.version) {

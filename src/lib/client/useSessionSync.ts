@@ -2,21 +2,30 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SessionSnapshot } from "@/lib/domain/types";
-import { ApiClientError, getSession, type GetSessionResponse } from "./api";
+import {
+  ApiClientError,
+  getSession,
+  type GetSessionResponse,
+  type RequestAuth,
+} from "./api";
 
 const VISIBLE_POLL_MS = 1200;
 const HIDDEN_POLL_MS = 5000;
+const MAX_BACKOFF_MS = 10_000;
+const STALE_THRESHOLD_MS = 10_000;
 
 interface SyncState {
   snapshot: SessionSnapshot | null;
   notFound: boolean;
   syncError: string | null;
   lastSyncedAtMs: number | null;
+  lastLocalSuccessMs: number | null;
 }
 
 export interface UseSessionSyncOptions {
   enabled?: boolean;
   initialNotFound?: boolean;
+  auth?: RequestAuth;
   onSnapshot?: (snapshot: SessionSnapshot, meta: { isInitial: boolean }) => void;
 }
 
@@ -25,7 +34,9 @@ export interface UseSessionSyncResult {
   isLoading: boolean;
   notFound: boolean;
   syncError: string | null;
+  syncStale: boolean;
   lastSyncedAtMs: number | null;
+  lastSyncedAgeSeconds: number | null;
   applyMutationSnapshot: (nextSnapshot: SessionSnapshot) => void;
   refreshNow: () => void;
 }
@@ -209,6 +220,8 @@ export function useSessionSync(
 ): UseSessionSyncResult {
   const enabled = options?.enabled ?? true;
   const initialNotFound = options?.initialNotFound ?? false;
+  const controllerKey = options?.auth?.controllerKey ?? null;
+  const staffToken = options?.auth?.staffToken ?? null;
   const shouldSync = enabled && !initialNotFound;
 
   const [state, setState] = useState<SyncState>({
@@ -216,7 +229,9 @@ export function useSessionSync(
     notFound: initialNotFound,
     syncError: null,
     lastSyncedAtMs: null,
+    lastLocalSuccessMs: null,
   });
+  const [nowTickMs, setNowTickMs] = useState<number>(() => Date.now());
 
   const currentSnapshotRef = useRef<SessionSnapshot | null>(null);
   const channelRef = useRef<BroadcastChannel | null>(null);
@@ -226,6 +241,16 @@ export function useSessionSync(
   useEffect(() => {
     onSnapshotRef.current = options?.onSnapshot;
   }, [options?.onSnapshot]);
+
+  useEffect(() => {
+    if (!shouldSync) {
+      return;
+    }
+    const id = window.setInterval(() => {
+      setNowTickMs(Date.now());
+    }, 2000);
+    return () => window.clearInterval(id);
+  }, [shouldSync]);
 
   const commitSnapshot = useCallback(
     (
@@ -245,6 +270,7 @@ export function useSessionSync(
         notFound: false,
         syncError: null,
         lastSyncedAtMs: nextSnapshot.serverNowMs,
+        lastLocalSuccessMs: Date.now(),
       });
 
       onSnapshotRef.current?.(nextSnapshot, { isInitial });
@@ -282,6 +308,7 @@ export function useSessionSync(
     let activeController: AbortController | null = null;
     let inFlight = false;
     let pendingPoll = false;
+    let consecutiveErrors = 0;
 
     const channelName = `examq_session_${sessionId}`;
     let channel: BroadcastChannel | null = null;
@@ -313,11 +340,19 @@ export function useSessionSync(
       if (timerId !== null) {
         window.clearTimeout(timerId);
       }
-      const interval =
+      const baseInterval =
         typeof document !== "undefined" &&
         document.visibilityState === "hidden"
           ? HIDDEN_POLL_MS
           : VISIBLE_POLL_MS;
+      const interval =
+        consecutiveErrors > 0
+          ? Math.min(
+              MAX_BACKOFF_MS,
+              Math.round(baseInterval * Math.pow(1.5, consecutiveErrors)) +
+                Math.floor(Math.random() * 400),
+            )
+          : baseInterval;
       timerId = window.setTimeout(() => {
         void runPoll();
       }, interval);
@@ -339,10 +374,14 @@ export function useSessionSync(
         const sinceVersion =
           !forceFull && current !== null ? current.version : undefined;
 
-        const res = await getSession(sessionId, sinceVersion, controller.signal);
+        const res = await getSession(sessionId, sinceVersion, controller.signal, {
+          controllerKey,
+          staffToken,
+        });
         if (cancelled) {
           return;
         }
+        consecutiveErrors = 0;
 
         if (!res.unchanged) {
           commitSnapshot(res.snapshot, "poll");
@@ -360,6 +399,7 @@ export function useSessionSync(
                 notFound: false,
                 syncError: null,
                 lastSyncedAtMs: res.serverNowMs,
+                lastLocalSuccessMs: Date.now(),
               }));
             }
           }
@@ -383,9 +423,11 @@ export function useSessionSync(
             notFound: true,
             syncError: err.message,
             lastSyncedAtMs: null,
+            lastLocalSuccessMs: null,
           });
           return;
         }
+        consecutiveErrors += 1;
         const message =
           err instanceof Error ? err.message : "Failed to sync session";
         setState((prev) => ({
@@ -446,7 +488,7 @@ export function useSessionSync(
         channelRef.current = null;
       }
     };
-  }, [sessionId, commitSnapshot, shouldSync]);
+  }, [sessionId, commitSnapshot, shouldSync, controllerKey, staffToken]);
 
   const refreshNow = useCallback(() => {
     pollTriggerRef.current?.();
@@ -459,12 +501,25 @@ export function useSessionSync(
     !effectiveNotFound &&
     state.syncError === null;
 
+  const lastSyncedAgeSeconds =
+    shouldSync && state.lastLocalSuccessMs !== null
+      ? Math.max(0, Math.floor((nowTickMs - state.lastLocalSuccessMs) / 1000))
+      : null;
+
+  const syncStale =
+    shouldSync &&
+    (state.syncError !== null ||
+      (state.lastLocalSuccessMs !== null &&
+        nowTickMs - state.lastLocalSuccessMs > STALE_THRESHOLD_MS));
+
   return {
     snapshot: shouldSync ? state.snapshot : null,
     isLoading,
     notFound: effectiveNotFound,
     syncError: shouldSync ? state.syncError : null,
+    syncStale,
     lastSyncedAtMs: shouldSync ? state.lastSyncedAtMs : null,
+    lastSyncedAgeSeconds,
     applyMutationSnapshot,
     refreshNow,
   };

@@ -18,13 +18,14 @@ export async function POST(
   try {
     const { id } = await context.params;
     const providedKey = requireControllerKeyHeader(request);
-    await readJsonBody(request, { allowEmpty: true });
+    const body = await readJsonBody(request, { allowEmpty: true });
+    const force = body.force === true;
 
     const store = getSessionStore();
     const { session } = await store.mutate(id, (current) => {
       verifyControllerKey(current.controllerKey, providedKey);
       const nowMs = Date.now();
-      const nextSession = clearSession(current, nowMs);
+      const nextSession = clearSession(current, nowMs, { force });
       return { session: nextSession, result: null };
     });
 

@@ -66,8 +66,8 @@ export function QueueColumn({
           <span
             className={`inline-flex h-9 w-9 items-center justify-center rounded-full ${
               sex === "M"
-                ? "bg-sky-500/12 text-sky-700"
-                : "bg-rose-500/12 text-rose-700"
+                ? "bg-sky-500/12 text-sky-800"
+                : "bg-rose-500/12 text-rose-800"
             }`}
           >
             {sex === "M" ? (
@@ -100,7 +100,7 @@ export function QueueColumn({
           <div className="flex min-w-0 items-center gap-2.5">
             <span
               className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                inBathroom ? "bg-amber-500" : "bg-emerald-500"
+                inBathroom ? "bg-amber-600" : "bg-emerald-700"
               }`}
             />
             {inBathroom ? (
@@ -112,14 +112,14 @@ export function QueueColumn({
                   {inBathroom.override && (
                     <span
                       title="Controller Override"
-                      className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-0.5 text-[11px] font-semibold text-purple-800"
+                      className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-0.5 text-[11px] font-semibold text-purple-900"
                     >
                       <ShieldIcon className="h-3 w-3" />
                       <span>Override</span>
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] break-words [overflow-wrap:anywhere] text-slate-500">
+                <p className="text-[11px] break-words [overflow-wrap:anywhere] text-slate-600">
                   {inBathroom.submittedBy}
                   {inBathroom.enteredAt !== null
                     ? ` · ${formatTimeOnly(inBathroom.enteredAt)}`
@@ -127,7 +127,7 @@ export function QueueColumn({
                 </p>
               </div>
             ) : (
-              <span className="text-sm font-medium text-emerald-800">
+              <span className="text-sm font-medium text-emerald-900">
                 Vacant
               </span>
             )}
@@ -139,30 +139,20 @@ export function QueueColumn({
                 type="button"
                 disabled={isEntryBusy(inBathroom.id)}
                 onClick={() => onEntryAction(inBathroom.id, "return")}
-                aria-label="Mark Returned"
-                title="Mark Returned"
-                className="inline-flex h-11 items-center justify-center gap-1.5 rounded-full bg-emerald-600 px-3.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                aria-label={`Mark Returned #${inBathroom.studentNumber}`}
+                title={`Mark Returned #${inBathroom.studentNumber}`}
+                className="inline-flex h-11 items-center justify-center gap-1.5 rounded-full bg-emerald-700 px-3.5 text-xs font-semibold text-white transition hover:bg-emerald-800 focus:ring-2 focus:ring-emerald-600 focus:outline-none disabled:opacity-50"
               >
                 <CheckReturnIcon className="h-4 w-4" />
                 <span>Returned</span>
-              </button>
-              <button
-                type="button"
-                disabled={isEntryBusy(inBathroom.id)}
-                onClick={() => onEntryAction(inBathroom.id, "remove")}
-                aria-label="Remove"
-                title="Remove"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-600 transition hover:bg-rose-50 disabled:opacity-50"
-              >
-                <TrashIcon className="h-4 w-4" />
               </button>
             </div>
           ) : (
             <span
               className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
                 inBathroom
-                  ? "bg-amber-200/70 text-amber-950"
-                  : "bg-emerald-200/70 text-emerald-950"
+                  ? "bg-amber-200/80 text-amber-950"
+                  : "bg-emerald-200/80 text-emerald-950"
               }`}
             >
               {inBathroom ? "Occupied" : "Open"}
@@ -173,7 +163,7 @@ export function QueueColumn({
 
       {/* Waiting FIFO Queue */}
       {queued.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-center text-xs font-medium text-slate-400">
+        <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-center text-xs font-medium text-slate-600">
           Empty queue
         </div>
       ) : (
@@ -195,28 +185,28 @@ export function QueueColumn({
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <span className="font-mono text-xs font-medium text-slate-400 tabular-nums">
+                    <span className="font-mono text-xs font-medium text-slate-600 tabular-nums">
                       {idx + 1}
                     </span>
                     <span className="min-w-0 max-w-full font-mono text-base font-bold break-words [overflow-wrap:anywhere] text-slate-900 tabular-nums">
                       #{entry.studentNumber}
                     </span>
                     {isNext && (
-                      <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold tracking-wider text-white uppercase">
+                      <span className="rounded-full bg-emerald-700 px-2 py-0.5 text-[10px] font-bold tracking-wider text-white uppercase">
                         NEXT
                       </span>
                     )}
                     {entry.override && (
                       <span
                         title="Controller Override"
-                        className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-semibold text-purple-800"
+                        className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-semibold text-purple-900"
                       >
                         <ShieldIcon className="h-3 w-3" />
                         <span>Override</span>
                       </span>
                     )}
                   </div>
-                  <p className="mt-0.5 min-w-0 max-w-full text-[11px] break-words [overflow-wrap:anywhere] text-slate-500">
+                  <p className="mt-0.5 min-w-0 max-w-full text-[11px] break-words [overflow-wrap:anywhere] text-slate-600">
                     {entry.submittedBy} · {formatTimeOnly(entry.createdAt)}
                   </p>
                 </div>
@@ -227,9 +217,9 @@ export function QueueColumn({
                       type="button"
                       disabled={isBusy}
                       onClick={() => onEntryAction(entry.id, "enter")}
-                      aria-label="Enter Bathroom"
-                      title="Enter Bathroom"
-                      className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-slate-800 disabled:opacity-40"
+                      aria-label={`Enter Bathroom #${entry.studentNumber}`}
+                      title={`Enter Bathroom #${entry.studentNumber}`}
+                      className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-slate-800 focus:ring-2 focus:ring-slate-500 focus:outline-none disabled:opacity-40"
                     >
                       <DoorEnterIcon className="h-4 w-4" />
                     </button>
@@ -237,9 +227,9 @@ export function QueueColumn({
                       type="button"
                       disabled={isBusy || idx === 0}
                       onClick={() => onReorder(entry.id, "up")}
-                      aria-label="Move Up"
-                      title="Move Up"
-                      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-35"
+                      aria-label={`Move Up #${entry.studentNumber}`}
+                      title={`Move Up #${entry.studentNumber}`}
+                      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-100 focus:ring-2 focus:ring-slate-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-35"
                     >
                       <ArrowUpIcon className="h-4 w-4" />
                     </button>
@@ -247,9 +237,9 @@ export function QueueColumn({
                       type="button"
                       disabled={isBusy || idx === queued.length - 1}
                       onClick={() => onReorder(entry.id, "down")}
-                      aria-label="Move Down"
-                      title="Move Down"
-                      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-35"
+                      aria-label={`Move Down #${entry.studentNumber}`}
+                      title={`Move Down #${entry.studentNumber}`}
+                      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-100 focus:ring-2 focus:ring-slate-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-35"
                     >
                       <ArrowDownIcon className="h-4 w-4" />
                     </button>
@@ -257,9 +247,9 @@ export function QueueColumn({
                       type="button"
                       disabled={isBusy}
                       onClick={() => onEntryAction(entry.id, "remove")}
-                      aria-label="Remove"
-                      title="Remove"
-                      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-600 transition hover:bg-rose-50 disabled:opacity-40"
+                      aria-label={`Remove #${entry.studentNumber}`}
+                      title={`Remove #${entry.studentNumber}`}
+                      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-700 transition hover:bg-rose-50 focus:ring-2 focus:ring-rose-400 focus:outline-none disabled:opacity-40"
                     >
                       <TrashIcon className="h-4 w-4" />
                     </button>
@@ -278,7 +268,7 @@ export function QueueColumn({
             type="button"
             onClick={() => setHistoryOpen((prev) => !prev)}
             aria-expanded={historyOpen}
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-slate-100 px-3.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-200"
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-slate-100 px-3.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-200 focus:ring-2 focus:ring-slate-400 focus:outline-none"
           >
             <span>History ({history.length})</span>
             <span>{historyOpen ? "−" : "+"}</span>
@@ -288,16 +278,16 @@ export function QueueColumn({
               {history.map((entry) => (
                 <div
                   key={entry.id}
-                  className="flex min-w-0 max-w-full items-center justify-between gap-2 rounded-2xl bg-slate-50 px-3 py-1.5 text-xs text-slate-600"
+                  className="flex min-w-0 max-w-full items-center justify-between gap-2 rounded-2xl bg-slate-50 px-3 py-1.5 text-xs text-slate-700"
                 >
-                  <span className="min-w-0 max-w-full font-mono font-semibold break-words [overflow-wrap:anywhere] text-slate-800">
+                  <span className="min-w-0 max-w-full font-mono font-semibold break-words [overflow-wrap:anywhere] text-slate-900">
                     #{entry.studentNumber}
                   </span>
                   <span
                     className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
                       entry.status === "returned"
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-slate-200 text-slate-700"
+                        ? "bg-emerald-100 text-emerald-900"
+                        : "bg-slate-200 text-slate-800"
                     }`}
                   >
                     {entry.status === "returned" ? "Returned" : "Removed"}

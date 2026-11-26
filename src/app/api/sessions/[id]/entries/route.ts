@@ -3,6 +3,7 @@ import {
   apiJson,
   handleApiError,
   requireControllerKeyHeader,
+  verifyActorAuth,
   verifyControllerKey,
 } from "@/lib/api/http";
 import { readJsonBody, validateSubmitEntryBody } from "@/lib/api/validation";
@@ -19,16 +20,32 @@ export async function POST(
     const { id } = await context.params;
     const body = await readJsonBody(request);
     const input = validateSubmitEntryBody(body);
-    const providedKey =
+    const providedControllerKey =
       input.override === true ? requireControllerKeyHeader(request) : null;
 
     const store = getSessionStore();
     const { session, result: entry } = await store.mutate(id, (current) => {
-      if (providedKey !== null) {
-        verifyControllerKey(current.controllerKey, providedKey);
+      if (providedControllerKey !== null) {
+        verifyControllerKey(current.controllerKey, providedControllerKey);
       }
+      const actor = verifyActorAuth(request, current);
       const nowMs = Date.now();
-      const next = submitStudent(current, input, nowMs);
+      const next = submitStudent(
+        current,
+        actor.role === "staff"
+          ? {
+              ...input,
+              staffId: actor.staffId,
+              submittedBy: undefined,
+              override: false,
+            }
+          : {
+              ...input,
+              staffId: undefined,
+              submittedBy: "Controller",
+            },
+        nowMs,
+      );
       return { session: next.session, result: next.entry };
     });
 

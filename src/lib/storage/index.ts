@@ -21,15 +21,17 @@ function resolveStorageConfig(): ResolvedStorageConfig {
   const kvToken = process.env.KV_REST_API_TOKEN?.trim() || "";
 
   if (upstashUrl && upstashToken) {
+    const prefixKey = `${process.env.EXAMQ_REDIS_PREFIX ?? ""}:${process.env.VERCEL_ENV ?? "local"}`;
     return {
-      key: `redis:${upstashUrl}:${upstashToken}`,
+      key: `redis:${upstashUrl}:${upstashToken}:${prefixKey}`,
       health: { ok: true, storage: "upstash-redis" },
     };
   }
 
   if (kvUrl && kvToken) {
+    const prefixKey = `${process.env.EXAMQ_REDIS_PREFIX ?? ""}:${process.env.VERCEL_ENV ?? "local"}`;
     return {
-      key: `redis:${kvUrl}:${kvToken}`,
+      key: `redis:${kvUrl}:${kvToken}:${prefixKey}`,
       health: { ok: true, storage: "upstash-redis" },
     };
   }

@@ -20,6 +20,8 @@ import {
 
 const MAX_STAFF_LABEL_LENGTH = 40;
 const MAX_STUDENT_NUMBER_LENGTH = 32;
+const MAX_ENTRIES_PER_SESSION = 500;
+const MAX_STAFF_PER_SESSION = 50;
 
 function defaultIdGenerator(): string {
   if (typeof globalThis.crypto?.randomUUID === "function") {
@@ -89,6 +91,13 @@ function cloneSession(session: ExamSession): ExamSession {
   return {
     id: session.id,
     controllerKey: session.controllerKey,
+    ...(session.inviteCode !== undefined ? { inviteCode: session.inviteCode } : {}),
+    ...(session.inviteVersion !== undefined
+      ? { inviteVersion: session.inviteVersion }
+      : {}),
+    ...(session.staffTokens !== undefined
+      ? { staffTokens: { ...session.staffTokens } }
+      : {}),
     createdAt: session.createdAt,
     version: session.version,
     clearedSeq: session.clearedSeq,
@@ -106,6 +115,7 @@ export function createSession(
   options?: {
     id?: string;
     controllerKey?: string;
+    inviteCode?: string;
     idGenerator?: () => string;
   },
 ): ExamSession {
@@ -116,10 +126,17 @@ export function createSession(
     options?.controllerKey ?? gen(),
     "controllerKey",
   );
+  const inviteCode = assertNonEmptyId(
+    options?.inviteCode ?? gen(),
+    "inviteCode",
+  );
 
   return {
     id,
     controllerKey,
+    inviteCode,
+    inviteVersion: 1,
+    staffTokens: {},
     createdAt: nowMs,
     version: 1,
     clearedSeq: 0,
@@ -144,6 +161,10 @@ export function toSessionSnapshot(
 
   return {
     id: session.id,
+    ...(session.inviteCode !== undefined ? { inviteCode: session.inviteCode } : {}),
+    ...(session.inviteVersion !== undefined
+      ? { inviteVersion: session.inviteVersion }
+      : {}),
     createdAt: session.createdAt,
     version: session.version,
     clearedSeq: session.clearedSeq,
@@ -163,7 +184,7 @@ export function joinStaff(
   input: { label: string },
   nowMs: number = Date.now(),
   options?: { idGenerator?: () => string },
-): { session: ExamSession; staff: StaffMember } {
+): { session: ExamSession; staff: StaffMember; staffToken: string } {
   assertFiniteNow(nowMs);
   if (typeof input?.label !== "string") {
     throw new DomainError("INVALID_INPUT", "Staff label must be a string");
@@ -177,6 +198,7 @@ export function joinStaff(
     );
   }
 
+  const gen = options?.idGenerator ?? defaultIdGenerator;
   const normalized = label.toLowerCase();
   const nextStaffList = session.staff.map(cloneStaff);
   const existingIndex = nextStaffList.findIndex(
@@ -194,7 +216,12 @@ export function joinStaff(
     };
     nextStaffList[existingIndex] = staffMember;
   } else {
-    const gen = options?.idGenerator ?? defaultIdGenerator;
+    if (nextStaffList.length >= MAX_STAFF_PER_SESSION) {
+      throw new DomainError(
+        "INVALID_STATE",
+        `Maximum staff limit (${MAX_STAFF_PER_SESSION}) reached for this session`,
+      );
+    }
     const id = assertNonEmptyId(gen(), "staff id");
     staffMember = {
       id,
@@ -205,15 +232,37 @@ export function joinStaff(
     nextStaffList.push(staffMember);
   }
 
+  const staffToken = assertNonEmptyId(gen(), "staffToken");
+  const nextTokens = { ...(session.staffTokens ?? {}), [staffToken]: staffMember.id };
+
   const nextSession: ExamSession = {
     ...cloneSession(session),
     staff: nextStaffList,
+    staffTokens: nextTokens,
     version: session.version + 1,
   };
 
   return {
     session: nextSession,
     staff: { ...staffMember },
+    staffToken,
+  };
+}
+
+export function rotateInvite(
+  session: ExamSession,
+  nowMs: number = Date.now(),
+  options?: { idGenerator?: () => string },
+): ExamSession {
+  assertFiniteNow(nowMs);
+  const gen = options?.idGenerator ?? defaultIdGenerator;
+  const inviteCode = assertNonEmptyId(gen(), "inviteCode");
+
+  return {
+    ...cloneSession(session),
+    inviteCode,
+    inviteVersion: (session.inviteVersion ?? 1) + 1,
+    version: session.version + 1,
   };
 }
 
@@ -351,6 +400,19 @@ export function submitStudent(
   };
 
   const nextEntries = [...session.entries.map(cloneEntry), newEntry];
+  if (nextEntries.length > MAX_ENTRIES_PER_SESSION) {
+    const pruneIdx = nextEntries.findIndex(
+      (item) => item.status === "returned" || item.status === "removed",
+    );
+    if (pruneIdx >= 0) {
+      nextEntries.splice(pruneIdx, 1);
+    } else {
+      throw new DomainError(
+        "INVALID_STATE",
+        `Maximum active entries (${MAX_ENTRIES_PER_SESSION}) reached for this session`,
+      );
+    }
+  }
   const reconciled = reconcileNextAndAlerts({
     prevNextBySex: session.nextBySex,
     entries: nextEntries,
@@ -453,7 +515,13 @@ export function applyEntryAction(
       returnedAt: nowMs,
     };
   } else {
-    if (target.status !== "queued" && target.status !== "in_bathroom") {
+    if (target.status === "in_bathroom") {
+      throw new DomainError(
+        "INVALID_STATE",
+        `Cannot remove entry '${entryId}' while student is in the bathroom; mark returned instead`,
+      );
+    }
+    if (target.status !== "queued") {
       throw new DomainError(
         "INVALID_STATE",
         `Cannot remove entry '${entryId}' from status '${target.status}'`,
@@ -608,8 +676,24 @@ export function reorderQueuedEntry(
 export function clearSession(
   session: ExamSession,
   nowMs: number = Date.now(),
+  options?: { force?: boolean },
 ): ExamSession {
   assertFiniteNow(nowMs);
+
+  const activeOut = session.entries.filter(
+    (entry) => entry.status === "in_bathroom",
+  );
+  if (activeOut.length > 0 && !options?.force) {
+    throw new DomainError(
+      "BATHROOM_OCCUPIED",
+      `Cannot clear session while ${activeOut.map((e) => `#${e.studentNumber}`).join(", ")} is still in the bathroom`,
+      {
+        details: {
+          activeStudentNumbers: activeOut.map((e) => e.studentNumber),
+        },
+      },
+    );
+  }
 
   const cloned = cloneSession(session);
   return {

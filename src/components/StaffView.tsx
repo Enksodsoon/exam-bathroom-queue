@@ -28,7 +28,9 @@ interface StaffViewProps {
   staffIdentity: StoredStaffIdentity;
   snapshot: SessionSnapshot | null;
   syncError: string | null;
+  syncStale?: boolean;
   lastSyncedAtMs: number | null;
+  lastSyncedAgeSeconds?: number | null;
   alert: UseNextStudentAlertResult;
   onMutationSnapshot: (snapshot: SessionSnapshot) => void;
   onChangeName: () => void;
@@ -41,7 +43,9 @@ export function StaffView({
   staffIdentity,
   snapshot,
   syncError,
+  syncStale = false,
   lastSyncedAtMs,
+  lastSyncedAgeSeconds = null,
   alert,
   onMutationSnapshot,
   onChangeName,
@@ -118,12 +122,18 @@ export function StaffView({
     setSubmitSuccessState(null);
 
     try {
-      const res = await submitEntry(sessionId, {
-        sex,
-        studentNumber: trimmed,
-        staffId: staffIdentity.staffId,
-        submittedBy: staffIdentity.label,
-      });
+      const res = await submitEntry(
+        sessionId,
+        {
+          sex,
+          studentNumber: trimmed,
+          staffId: staffIdentity.staffId,
+          submittedBy: staffIdentity.label,
+        },
+        staffIdentity.staffToken
+          ? { staffToken: staffIdentity.staffToken }
+          : undefined,
+      );
       onMutationSnapshot(res.snapshot);
       setStudentNumber("");
       setSubmitSuccessState({
@@ -176,14 +186,27 @@ export function StaffView({
               compact
             />
 
-            <span className="font-mono text-xs text-slate-500 tabular-nums">
+            <span className="font-mono text-xs text-slate-600 tabular-nums">
               {formatTimeOnly(snapshot.effectiveNowMs)}
             </span>
-            {lastSyncedAtMs !== null && (
+            {syncStale ? (
               <span
-                title="Live Sync"
-                className="h-2 w-2 rounded-full bg-emerald-500"
-              />
+                data-testid="sync-stale-badge"
+                className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-900"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-600" />
+                Stale
+                {lastSyncedAgeSeconds !== null
+                  ? ` · ${lastSyncedAgeSeconds}s`
+                  : ""}
+              </span>
+            ) : (
+              lastSyncedAtMs !== null && (
+                <span
+                  title="Live Sync"
+                  className="h-2 w-2 rounded-full bg-emerald-700"
+                />
+              )
             )}
           </div>
 
@@ -250,6 +273,7 @@ export function StaffView({
       >
         {!isAllowed && (
           <div
+            id="staff-window-block-notice"
             data-testid="staff-window-block-notice"
             className="mb-4 flex min-w-0 max-w-full items-center gap-2.5 rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-2.5 text-xs font-medium break-words [overflow-wrap:anywhere] text-rose-900"
           >
@@ -321,10 +345,11 @@ export function StaffView({
               type="submit"
               disabled={submitting}
               aria-label="Submit Student"
+              aria-describedby={!isAllowed ? "staff-window-block-notice" : undefined}
               className={`inline-flex min-h-[50px] items-center justify-center gap-2 rounded-full px-7 py-2.5 text-sm font-semibold text-white transition focus:ring-2 focus:ring-slate-400 focus:outline-none disabled:opacity-50 ${
                 isAllowed
                   ? "bg-slate-900 hover:bg-slate-800"
-                  : "bg-slate-500 hover:bg-slate-600"
+                  : "bg-slate-600 hover:bg-slate-700"
               }`}
             >
               <span>{submitting ? "Sending..." : "Submit Student"}</span>

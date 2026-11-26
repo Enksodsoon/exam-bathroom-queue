@@ -5,6 +5,7 @@ import { useMemo, useSyncExternalStore } from "react";
 export interface StoredStaffIdentity {
   staffId: string;
   label: string;
+  staffToken?: string;
 }
 
 const STORAGE_EVENT_NAME = "examq-storage-change";
@@ -46,9 +47,12 @@ function readSessionStorageItem(key: string): string | null {
   }
 }
 
-export function saveControllerKey(sessionId: string, controllerKey: string): void {
+export function saveControllerKey(
+  sessionId: string,
+  controllerKey: string,
+): boolean {
   if (typeof window === "undefined") {
-    return;
+    return false;
   }
   try {
     window.sessionStorage.setItem(
@@ -56,8 +60,9 @@ export function saveControllerKey(sessionId: string, controllerKey: string): voi
       controllerKey,
     );
     notifyStorageChange();
+    return true;
   } catch {
-    // Ignore storage quota or private-mode errors
+    return false;
   }
 }
 
@@ -76,9 +81,9 @@ export function clearControllerKey(sessionId: string): void {
 export function saveStaffIdentity(
   sessionId: string,
   identity: StoredStaffIdentity,
-): void {
+): boolean {
   if (typeof window === "undefined") {
-    return;
+    return false;
   }
   try {
     window.sessionStorage.setItem(
@@ -86,8 +91,9 @@ export function saveStaffIdentity(
       JSON.stringify(identity),
     );
     notifyStorageChange();
+    return true;
   } catch {
-    // Ignore storage errors
+    return false;
   }
 }
 
@@ -137,6 +143,9 @@ export function useStoredStaffIdentity(
         return {
           staffId: (parsed as StoredStaffIdentity).staffId,
           label: (parsed as StoredStaffIdentity).label,
+          ...(typeof (parsed as StoredStaffIdentity).staffToken === "string"
+            ? { staffToken: (parsed as StoredStaffIdentity).staffToken }
+            : {}),
         };
       }
       return null;

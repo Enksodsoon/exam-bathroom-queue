@@ -97,7 +97,7 @@ export const Selectors = {
 
   confirmClearButton: (page: Page): Locator =>
     page
-      .getByRole('button', { name: /confirm.*clear|yes.*clear|confirm|reset all/i })
+      .getByRole('button', { name: /confirm.*clear|force.*clear|yes.*clear|confirm|reset all/i })
       .first(),
 
   // Per-sex regions & rows

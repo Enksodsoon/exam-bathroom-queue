@@ -51,6 +51,9 @@ export interface NextBySex {
 export interface ExamSession {
   id: string;
   controllerKey: string;
+  inviteCode?: string;
+  inviteVersion?: number;
+  staffTokens?: Record<string, string>;
   createdAt: number;
   version: number;
   clearedSeq: number;
@@ -64,6 +67,8 @@ export interface ExamSession {
 
 export interface SessionSnapshot {
   id: string;
+  inviteCode?: string;
+  inviteVersion?: number;
   createdAt: number;
   version: number;
   clearedSeq: number;

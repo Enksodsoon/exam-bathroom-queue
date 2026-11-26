@@ -561,9 +561,11 @@ describe("M2 Storage & REST API Integration", () => {
       const join2Body = (await join2.json()) as {
         staffId: string;
         label: string;
+        staffToken: string;
       };
       expect(join2Body.staffId).toBe(join1Body.staffId);
       expect(join2Body.label).toBe("room 101");
+      const staffHeader = { "x-staff-token": join2Body.staffToken };
 
       // Configure exam window into ALLOWED
       const cfgRes = await updateConfigRoute(
@@ -583,6 +585,7 @@ describe("M2 Storage & REST API Integration", () => {
       const m1Res = await submitEntryRoute(
         makeRequest(`/api/sessions/${created.sessionId}/entries`, {
           method: "POST",
+          headers: staffHeader,
           body: {
             sex: "M",
             studentNumber: "M-001",
@@ -604,6 +607,7 @@ describe("M2 Storage & REST API Integration", () => {
       const m2Res = await submitEntryRoute(
         makeRequest(`/api/sessions/${created.sessionId}/entries`, {
           method: "POST",
+          headers: staffHeader,
           body: { sex: "M", studentNumber: "M-002", submittedBy: "Hallway" },
         }),
         { params: Promise.resolve({ id: created.sessionId }) },
@@ -614,6 +618,7 @@ describe("M2 Storage & REST API Integration", () => {
       const f1Res = await submitEntryRoute(
         makeRequest(`/api/sessions/${created.sessionId}/entries`, {
           method: "POST",
+          headers: staffHeader,
           body: { sex: "F", studentNumber: "F-001" },
         }),
         { params: Promise.resolve({ id: created.sessionId }) },
@@ -733,11 +738,12 @@ describe("M2 Storage & REST API Integration", () => {
       );
       expect(removeM1.status).toBe(200);
 
-      // Clear session
+      // Clear session (force=true since F1 is still in_bathroom)
       const clearRes = await clearSessionRoute(
         makeRequest(`/api/sessions/${created.sessionId}/clear`, {
           method: "POST",
           headers: { "x-controller-key": created.controllerKey },
+          body: { force: true },
         }),
         { params: Promise.resolve({ id: created.sessionId }) },
       );
@@ -949,6 +955,7 @@ describe("M2 Storage & REST API Integration", () => {
       const okSub = await submitEntryRoute(
         makeRequest(`/api/sessions/${id}/entries`, {
           method: "POST",
+          headers: { "x-controller-key": created.controllerKey },
           body: { sex: "F", studentNumber: "F1" },
         }),
         { params: Promise.resolve({ id }) },
@@ -959,6 +966,7 @@ describe("M2 Storage & REST API Integration", () => {
       const dupSub = await submitEntryRoute(
         makeRequest(`/api/sessions/${id}/entries`, {
           method: "POST",
+          headers: { "x-controller-key": created.controllerKey },
           body: { sex: "F", studentNumber: "f1" },
         }),
         { params: Promise.resolve({ id }) },
@@ -1001,6 +1009,7 @@ describe("M2 Storage & REST API Integration", () => {
       const blocked = await submitEntryRoute(
         makeRequest(`/api/sessions/${id}/entries`, {
           method: "POST",
+          headers: { "x-controller-key": created.controllerKey },
           body: { sex: "M", studentNumber: "S-OUT-1" },
         }),
         { params: Promise.resolve({ id }) },
@@ -1084,7 +1093,9 @@ describe("M2 Storage & REST API Integration", () => {
       // ?sinceVersion=0 and ?sinceVersion=-5 return full snapshot
       for (const v of ["0", "-5"]) {
         const res = await getSessionRoute(
-          makeRequest(`/api/sessions/${id}?sinceVersion=${v}`),
+          makeRequest(`/api/sessions/${id}?sinceVersion=${v}`, {
+            headers: { "x-controller-key": created.controllerKey },
+          }),
           { params: Promise.resolve({ id }) },
         );
         expect(res.status).toBe(200);
@@ -1108,7 +1119,9 @@ describe("M2 Storage & REST API Integration", () => {
         const targetNow = baseStart + cp.offsetMin * 60_000;
         vi.setSystemTime(targetNow);
         const pollRes = await getSessionRoute(
-          makeRequest(`/api/sessions/${id}?sinceVersion=${currentVersion}`),
+          makeRequest(`/api/sessions/${id}?sinceVersion=${currentVersion}`, {
+            headers: { "x-controller-key": created.controllerKey },
+          }),
           { params: Promise.resolve({ id }) },
         );
         expect(pollRes.status).toBe(200);
@@ -1163,6 +1176,7 @@ describe("M2 Storage & REST API Integration", () => {
           submitEntryRoute(
             makeRequest(`/api/sessions/${id}/entries`, {
               method: "POST",
+              headers: { "x-controller-key": created.controllerKey },
               body: payload,
             }),
             { params: Promise.resolve({ id }) },
@@ -1193,7 +1207,9 @@ describe("M2 Storage & REST API Integration", () => {
       );
 
       const finalRes = await getSessionRoute(
-        makeRequest(`/api/sessions/${id}`),
+        makeRequest(`/api/sessions/${id}`, {
+          headers: { "x-controller-key": created.controllerKey },
+        }),
         { params: Promise.resolve({ id }) },
       );
       expect(finalRes.status).toBe(200);
@@ -1227,11 +1243,12 @@ describe("M2 Storage & REST API Integration", () => {
     it("resolves concurrent duplicate POST /entries strictly as [201, 409] with 1 persisted entry", async () => {
       const created = await createTestSession();
       const id = created.sessionId;
+      const keyHeader = { "x-controller-key": created.controllerKey };
 
       await updateConfigRoute(
         makeRequest(`/api/sessions/${id}/config`, {
           method: "PATCH",
-          headers: { "x-controller-key": created.controllerKey },
+          headers: keyHeader,
           body: {
             startTimeMs: Date.now() - 40 * 60_000,
             durationMinutes: 120,
@@ -1244,6 +1261,7 @@ describe("M2 Storage & REST API Integration", () => {
         submitEntryRoute(
           makeRequest(`/api/sessions/${id}/entries`, {
             method: "POST",
+            headers: keyHeader,
             body: { sex: "M", studentNumber: "DUP-101", submittedBy: "Staff A" },
           }),
           { params: Promise.resolve({ id }) },
@@ -1251,6 +1269,7 @@ describe("M2 Storage & REST API Integration", () => {
         submitEntryRoute(
           makeRequest(`/api/sessions/${id}/entries`, {
             method: "POST",
+            headers: keyHeader,
             body: { sex: "M", studentNumber: " dup-101 ", submittedBy: "Staff B" },
           }),
           { params: Promise.resolve({ id }) },
@@ -1266,7 +1285,9 @@ describe("M2 Storage & REST API Integration", () => {
       });
 
       const finalRes = await getSessionRoute(
-        makeRequest(`/api/sessions/${id}`),
+        makeRequest(`/api/sessions/${id}`, {
+          headers: { "x-controller-key": created.controllerKey },
+        }),
         { params: Promise.resolve({ id }) },
       );
       expect(finalRes.status).toBe(200);
@@ -1298,6 +1319,7 @@ describe("M2 Storage & REST API Integration", () => {
       const m1Res = await submitEntryRoute(
         makeRequest(`/api/sessions/${id}/entries`, {
           method: "POST",
+          headers: keyHeader,
           body: { sex: "M", studentNumber: "M-RACE-1" },
         }),
         { params: Promise.resolve({ id }) },
@@ -1305,6 +1327,7 @@ describe("M2 Storage & REST API Integration", () => {
       const m2Res = await submitEntryRoute(
         makeRequest(`/api/sessions/${id}/entries`, {
           method: "POST",
+          headers: keyHeader,
           body: { sex: "M", studentNumber: "M-RACE-2" },
         }),
         { params: Promise.resolve({ id }) },
@@ -1342,7 +1365,9 @@ describe("M2 Storage & REST API Integration", () => {
       });
 
       const finalRes = await getSessionRoute(
-        makeRequest(`/api/sessions/${id}`),
+        makeRequest(`/api/sessions/${id}`, {
+          headers: { "x-controller-key": created.controllerKey },
+        }),
         { params: Promise.resolve({ id }) },
       );
       const finalBody = (await finalRes.json()) as {
@@ -1385,6 +1410,7 @@ describe("M2 Storage & REST API Integration", () => {
       const m1Res = await submitEntryRoute(
         makeRequest(`/api/sessions/${id}/entries`, {
           method: "POST",
+          headers: keyHeader,
           body: { sex: "M", studentNumber: "M-SHORT-1" },
         }),
         { params: Promise.resolve({ id }) },
@@ -1410,6 +1436,7 @@ describe("M2 Storage & REST API Integration", () => {
       const blockedStaff = await submitEntryRoute(
         makeRequest(`/api/sessions/${id}/entries`, {
           method: "POST",
+          headers: keyHeader,
           body: { sex: "F", studentNumber: "F-SHORT-1" },
         }),
         { params: Promise.resolve({ id }) },
@@ -1475,6 +1502,7 @@ describe("M2 Storage & REST API Integration", () => {
       const aM1 = await submitEntryRoute(
         makeRequest(`/api/sessions/${hallA.sessionId}/entries`, {
           method: "POST",
+          headers: { "x-controller-key": hallA.controllerKey },
           body: { sex: "M", studentNumber: "HALL-A-1" },
         }),
         { params: Promise.resolve({ id: hallA.sessionId }) },
@@ -1484,6 +1512,7 @@ describe("M2 Storage & REST API Integration", () => {
       const bM1Res = await submitEntryRoute(
         makeRequest(`/api/sessions/${hallB.sessionId}/entries`, {
           method: "POST",
+          headers: { "x-controller-key": hallB.controllerKey },
           body: { sex: "M", studentNumber: "HALL-B-1" },
         }),
         { params: Promise.resolve({ id: hallB.sessionId }) },
@@ -1491,6 +1520,7 @@ describe("M2 Storage & REST API Integration", () => {
       const bF1Res = await submitEntryRoute(
         makeRequest(`/api/sessions/${hallB.sessionId}/entries`, {
           method: "POST",
+          headers: { "x-controller-key": hallB.controllerKey },
           body: { sex: "F", studentNumber: "HALL-B-2" },
         }),
         { params: Promise.resolve({ id: hallB.sessionId }) },
@@ -1568,7 +1598,9 @@ describe("M2 Storage & REST API Integration", () => {
       expect(clearHallABody.snapshot.clearedSeq).toBe(1);
 
       const hallBGet = await getSessionRoute(
-        makeRequest(`/api/sessions/${hallB.sessionId}`),
+        makeRequest(`/api/sessions/${hallB.sessionId}`, {
+          headers: { "x-controller-key": hallB.controllerKey },
+        }),
         { params: Promise.resolve({ id: hallB.sessionId }) },
       );
       expect(hallBGet.status).toBe(200);

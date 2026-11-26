@@ -87,6 +87,10 @@ export class FileSessionStore implements SessionStore {
     this.dataDir = resolveFileStoreDataDir(dataDir);
   }
 
+  async ping(): Promise<void> {
+    // Process-local file store is always ready when dataDir is resolved
+  }
+
   private sessionPath(sessionId: string): string {
     const id = assertValidSessionId(sessionId);
     const resolved = path.resolve(this.dataDir, `${id}.json`);

@@ -39,6 +39,11 @@ async function parseResponse<T>(res: APIResponse): Promise<ApiCallResult<T>> {
 }
 
 export class ExamQApiClient {
+  private readonly authBySession = new Map<
+    string,
+    { controllerKey?: string; staffToken?: string }
+  >();
+
   constructor(private readonly request: APIRequestContext) {}
 
   async health(): Promise<ApiCallResult<HealthResponse & ApiErrorBody>> {
@@ -59,19 +64,38 @@ export class ExamQApiClient {
           ? { data: rawPayload }
           : {};
     const res = await this.request.post('/api/sessions', opts);
-    return parseResponse(res);
+    const parsed = await parseResponse<CreateSessionResponse & ApiErrorBody>(res);
+    if (parsed.ok && parsed.body?.sessionId && parsed.body?.controllerKey) {
+      this.authBySession.set(parsed.body.sessionId, {
+        controllerKey: parsed.body.controllerKey,
+      });
+    }
+    return parsed;
   }
 
   async getSnapshot(
     sessionId: string,
     sinceVersion?: number | string,
+    controllerKey?: string | null,
   ): Promise<ApiCallResult<GetSessionResponse & ApiErrorBody>> {
     const qs =
       sinceVersion !== undefined
         ? `?sinceVersion=${encodeURIComponent(String(sinceVersion))}`
         : '';
+    const saved = this.authBySession.get(sessionId);
+    const headers: Record<string, string> = {};
+    if (controllerKey) {
+      headers['x-controller-key'] = controllerKey;
+    } else if (controllerKey !== null) {
+      if (saved?.controllerKey) {
+        headers['x-controller-key'] = saved.controllerKey;
+      } else if (saved?.staffToken) {
+        headers['x-staff-token'] = saved.staffToken;
+      }
+    }
     const res = await this.request.get(
       `/api/sessions/${encodeURIComponent(sessionId)}${qs}`,
+      { headers },
     );
     return parseResponse(res);
   }
@@ -91,7 +115,17 @@ export class ExamQApiClient {
       `/api/sessions/${encodeURIComponent(sessionId)}/join`,
       opts,
     );
-    return parseResponse(res);
+    const parsed = await parseResponse<
+      JoinSessionResponse & { staffToken?: string } & ApiErrorBody
+    >(res);
+    if (parsed.ok && parsed.body?.staffToken) {
+      const prev = this.authBySession.get(sessionId) ?? {};
+      this.authBySession.set(sessionId, {
+        ...prev,
+        staffToken: parsed.body.staffToken,
+      });
+    }
+    return parsed;
   }
 
   async patchConfig(
@@ -128,8 +162,15 @@ export class ExamQApiClient {
     controllerKey?: string | null,
   ): Promise<ApiCallResult<SubmitEntryResponse & ApiErrorBody>> {
     const headers: Record<string, string> = {};
+    const saved = this.authBySession.get(sessionId);
     if (controllerKey) {
       headers['x-controller-key'] = controllerKey;
+    } else if (controllerKey !== null) {
+      if (saved?.staffToken) {
+        headers['x-staff-token'] = saved.staffToken;
+      } else if (saved?.controllerKey) {
+        headers['x-controller-key'] = saved.controllerKey;
+      }
     }
     const res = await this.request.post(
       `/api/sessions/${encodeURIComponent(sessionId)}/entries`,
@@ -195,6 +236,7 @@ export class ExamQApiClient {
   async clear(
     sessionId: string,
     controllerKey: string | null,
+    options?: { force?: boolean },
   ): Promise<ApiCallResult<SnapshotResponse & ApiErrorBody>> {
     const headers: Record<string, string> = {};
     if (controllerKey !== null) {
@@ -202,7 +244,7 @@ export class ExamQApiClient {
     }
     const res = await this.request.post(
       `/api/sessions/${encodeURIComponent(sessionId)}/clear`,
-      { headers },
+      { headers, ...(options?.force ? { data: { force: true } } : {}) },
     );
     return parseResponse(res);
   }

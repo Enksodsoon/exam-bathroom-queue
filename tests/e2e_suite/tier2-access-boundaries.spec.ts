@@ -108,7 +108,9 @@ test.describe('Tier 2 — Access, Join & Role Boundaries (F-S1..F-S4)', () => {
       const ctrl = new ControllerPage(page);
       await ctrl.goto(s.sessionId, s.controllerKey);
       const share = await ctrl.getShareUrl();
-      expect(share).toMatch(new RegExp(`/s/${s.sessionId}/?$`));
+      expect(share).toMatch(new RegExp(`/s/${s.sessionId}(?:\\?invite=[^&]+)?/?$`));
+      expect(share).not.toContain('key=');
+      expect(share).not.toContain(s.controllerKey);
     } finally {
       await ctx.close();
     }
@@ -210,11 +212,15 @@ test.describe('Tier 2 — Access, Join & Role Boundaries (F-S1..F-S4)', () => {
   }) => {
     const api = new ExamQApiClient(request);
     const s = await createConfiguredSession(api);
-    const res = await api.submitEntry(s.sessionId, {
-      sex: 'M',
-      studentNumber: 'UNAUTH-OVR',
-      override: true,
-    });
+    const res = await api.submitEntry(
+      s.sessionId,
+      {
+        sex: 'M',
+        studentNumber: 'UNAUTH-OVR',
+        override: true,
+      },
+      null,
+    );
     expect([401, 403]).toContain(res.status);
   });
 

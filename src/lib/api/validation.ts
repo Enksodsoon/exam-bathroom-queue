@@ -12,6 +12,8 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+const MAX_JSON_BODY_BYTES = 16_384;
+
 export async function readJsonBody(
   request: Request,
   options?: { allowEmpty?: boolean },
@@ -21,6 +23,14 @@ export async function readJsonBody(
     rawText = await request.text();
   } catch {
     throw new ApiHttpError(400, "INVALID_INPUT", "Unable to read request body");
+  }
+
+  if (Buffer.byteLength(rawText, "utf8") > MAX_JSON_BODY_BYTES) {
+    throw new ApiHttpError(
+      413,
+      "PAYLOAD_TOO_LARGE",
+      "Request body exceeds 16KB limit",
+    );
   }
 
   if (rawText.trim().length === 0) {
@@ -113,12 +123,13 @@ export function validateConfigBody(body: Record<string, unknown>): ExamConfig {
   if (
     typeof body.durationMinutes !== "number" ||
     !Number.isFinite(body.durationMinutes) ||
+    !Number.isInteger(body.durationMinutes) ||
     body.durationMinutes < 1
   ) {
     throw new ApiHttpError(
       400,
       "INVALID_INPUT",
-      "durationMinutes must be a finite number >= 1",
+      "durationMinutes must be a whole integer >= 1",
     );
   }
 

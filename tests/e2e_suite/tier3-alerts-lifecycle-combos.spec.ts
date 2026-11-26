@@ -68,7 +68,7 @@ test.describe('Tier 3 — Alerts, Lifecycle, Mute & Sync Edge Combinations (T3-1
     const m = await api.submitEntry(s.sessionId, { sex: 'M', studentNumber: 'CYCLE-77' });
     await api.entryAction(s.sessionId, m.body.entry.id, s.controllerKey, { action: 'enter' });
 
-    const clr = await api.clear(s.sessionId, s.controllerKey);
+    const clr = await api.clear(s.sessionId, s.controllerKey, { force: true });
     const seqAfterClear = clr.body.snapshot.lastNextAlert?.seq ?? 0;
 
     const re = await api.submitEntry(s.sessionId, { sex: 'M', studentNumber: 'CYCLE-77' });

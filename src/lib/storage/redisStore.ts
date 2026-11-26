@@ -11,7 +11,15 @@ import {
 
 export const SESSION_TTL_SECONDS = 86_400;
 const DEFAULT_MAX_RETRIES = 24;
-const DEFAULT_KEY_PREFIX = "examq:session:";
+
+function resolveDefaultKeyPrefix(): string {
+  const explicit = process.env.EXAMQ_REDIS_PREFIX?.trim();
+  if (explicit) {
+    return explicit.endsWith(":") ? explicit : `${explicit}:`;
+  }
+  const env = process.env.VERCEL_ENV?.trim();
+  return env ? `examq:${env}:session:` : "examq:session:";
+}
 
 const CAS_LUA_SCRIPT = `
 local current = redis.call("GET", KEYS[1])
@@ -83,8 +91,27 @@ export class UpstashRedisSessionStore implements SessionStore {
       const { url, token } = resolveEnvRedisCredentials();
       this.redis = new Redis({ url, token });
     }
-    this.keyPrefix = options?.keyPrefix ?? DEFAULT_KEY_PREFIX;
+    this.keyPrefix = options?.keyPrefix ?? resolveDefaultKeyPrefix();
     this.maxRetries = options?.maxRetries ?? DEFAULT_MAX_RETRIES;
+  }
+
+  async ping(): Promise<void> {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    try {
+      await Promise.race([
+        this.redis.get(`${this.keyPrefix}__healthcheck__`),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => reject(new Error("Redis ping timed out")),
+            2_000,
+          );
+        }),
+      ]);
+    } finally {
+      if (timer !== null) {
+        clearTimeout(timer);
+      }
+    }
   }
 
   private keyFor(sessionId: string): string {

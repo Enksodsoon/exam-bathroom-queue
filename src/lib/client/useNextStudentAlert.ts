@@ -315,6 +315,22 @@ export function useNextStudentAlert(
         return;
       }
 
+      if (evaluation.type === "noop") {
+        setAlertState((prev) => {
+          if (
+            prev.activeAlert &&
+            snapshot.nextBySex[prev.activeAlert.sex] !== prev.activeAlert.entryId
+          ) {
+            return {
+              ...prev,
+              activeAlert: null,
+            };
+          }
+          return prev;
+        });
+        return;
+      }
+
       if (evaluation.type === "trigger") {
         const isMuted = mutedRef.current;
         let audioDelta = 0;
@@ -332,8 +348,11 @@ export function useNextStudentAlert(
           }
         }
 
+        const isStillNext =
+          snapshot.nextBySex[evaluation.alert.sex] === evaluation.alert.entryId;
+
         setAlertState((prev) => ({
-          activeAlert: evaluation.alert,
+          activeAlert: isStillNext ? evaluation.alert : null,
           audioAlertCount: prev.audioAlertCount + audioDelta,
           vibrateAlertCount: prev.vibrateAlertCount + vibrateDelta,
           visualAlertCount: prev.visualAlertCount + evaluation.triggerCount,

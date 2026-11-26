@@ -34,6 +34,7 @@ export class StorageError extends Error {
 
 export interface SessionStore {
   readonly backendName: StorageBackend;
+  ping(): Promise<void>;
   create(session: ExamSession): Promise<ExamSession>;
   get(sessionId: string): Promise<ExamSession | null>;
   mutate<T>(

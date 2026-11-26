@@ -361,7 +361,7 @@ test.describe('Tier 1 — Exam Time-Window & Session Lifecycle (F-T1..F-T4)', ()
     await api.submitEntry(s.sessionId, { sex: 'M', studentNumber: 'C1' });
     await api.submitEntry(s.sessionId, { sex: 'F', studentNumber: 'C2' });
 
-    const clr = await api.clear(s.sessionId, s.controllerKey);
+    const clr = await api.clear(s.sessionId, s.controllerKey, { force: true });
     expect(clr.status).toBe(200);
     expect(clr.body.snapshot.entries).toEqual([]);
     expect(clr.body.snapshot.nextBySex).toEqual({ M: null, F: null });
@@ -377,7 +377,7 @@ test.describe('Tier 1 — Exam Time-Window & Session Lifecycle (F-T1..F-T4)', ()
     await api.entryAction(s.sessionId, m.body.entry.id, s.controllerKey, { action: 'enter' });
     await api.entryAction(s.sessionId, f.body.entry.id, s.controllerKey, { action: 'enter' });
 
-    const clr = await api.clear(s.sessionId, s.controllerKey);
+    const clr = await api.clear(s.sessionId, s.controllerKey, { force: true });
     expect(clr.status).toBe(200);
     expect(clr.body.snapshot.entries).toEqual([]);
 
@@ -397,7 +397,7 @@ test.describe('Tier 1 — Exam Time-Window & Session Lifecycle (F-T1..F-T4)', ()
     await api.entryAction(s.sessionId, m1.body.entry.id, s.controllerKey, { action: 'return' });
     await api.entryAction(s.sessionId, f1.body.entry.id, s.controllerKey, { action: 'remove' });
 
-    const clr = await api.clear(s.sessionId, s.controllerKey);
+    const clr = await api.clear(s.sessionId, s.controllerKey, { force: true });
     expect(clr.status).toBe(200);
     expect(clr.body.snapshot.entries).toEqual([]);
     expect(clr.body.snapshot.clearedSeq).toBeGreaterThan(seq0);

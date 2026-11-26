@@ -92,15 +92,36 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
     ).toEqual([]);
 
     // Staff with pre-existing identity: intercept initial GET with 500 HTML (tests Bug 2 + non-JSON error resilience)
+    const joinRes = await page.request.post(
+      `/api/sessions/${created.sessionId}/join`,
+      { data: { label: "Hall Recovery" } },
+    );
+    expect(joinRes.status()).toBe(200);
+    const joined = (await joinRes.json()) as {
+      staffId: string;
+      label: string;
+      staffToken: string;
+    };
+
     const staffCtx = await browser.newContext({
       viewport: page.viewportSize() ?? undefined,
     });
-    await staffCtx.addInitScript((sid) => {
-      window.sessionStorage.setItem(
-        `examq_staff_${sid}`,
-        JSON.stringify({ staffId: "st-pre", label: "Hall Recovery" }),
-      );
-    }, created.sessionId);
+    await staffCtx.addInitScript(
+      ({ sid, identity }) => {
+        window.sessionStorage.setItem(
+          `examq_staff_${sid}`,
+          JSON.stringify(identity),
+        );
+      },
+      {
+        sid: created.sessionId,
+        identity: {
+          staffId: joined.staffId,
+          label: joined.label,
+          staffToken: joined.staffToken,
+        },
+      },
+    );
 
     const staffPage = await staffCtx.newPage();
     const staffErrors = attachErrorListeners(staffPage);
@@ -242,7 +263,10 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
     for (const num of ["PRE-1", "PRE-2", "PRE-3", "PRE-4"]) {
       const subRes = await page.request.post(
         `/api/sessions/${created.sessionId}/entries`,
-        { data: { sex: "M", studentNumber: num } },
+        {
+          headers: { "x-controller-key": created.controllerKey },
+          data: { sex: "M", studentNumber: num },
+        },
       );
       expect(subRes.status()).toBe(201);
       const subBody = (await subRes.json()) as { entry: { id: string } };
@@ -436,7 +460,10 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
 
       const subRes = await page.request.post(
         `/api/sessions/${created.sessionId}/entries`,
-        { data: { sex: "F", studentNumber: "RES-1" } },
+        {
+          headers: { "x-controller-key": created.controllerKey },
+          data: { sex: "F", studentNumber: "RES-1" },
+        },
       );
       expect(subRes.status()).toBe(201);
 
@@ -507,7 +534,10 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
 
       const subRes2 = await page.request.post(
         `/api/sessions/${created.sessionId}/entries`,
-        { data: { sex: "M", studentNumber: "RES-2" } },
+        {
+          headers: { "x-controller-key": created.controllerKey },
+          data: { sex: "M", studentNumber: "RES-2" },
+        },
       );
       expect(subRes2.status()).toBe(201);
 
@@ -593,7 +623,7 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
     await expect(page.getByTestId("controller-queue-error")).toHaveCount(0);
 
     await page.getByRole("button", { name: "Clear Session" }).click();
-    await page.getByRole("button", { name: "Confirm Clear" }).dblclick();
+    await page.getByRole("button", { name: /Confirm Clear|Force Clear/i }).dblclick();
     await expect(
       page.getByText("Session cleared."),
     ).toBeVisible();

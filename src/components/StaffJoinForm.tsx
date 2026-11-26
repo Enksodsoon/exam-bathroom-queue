@@ -12,7 +12,12 @@ import { ArrowRightIcon, UserBadgeIcon } from "./Icons";
 interface StaffJoinFormProps {
   sessionId: string;
   initialLabel?: string;
-  onJoined: (identity: StoredStaffIdentity, snapshot: SessionSnapshot) => void;
+  inviteCode?: string | null;
+  onJoined: (
+    identity: StoredStaffIdentity,
+    snapshot: SessionSnapshot,
+    persisted: boolean,
+  ) => void;
 }
 
 const MAX_LABEL_LEN = 40;
@@ -20,6 +25,7 @@ const MAX_LABEL_LEN = 40;
 export function StaffJoinForm({
   sessionId,
   initialLabel = "",
+  inviteCode = null,
   onJoined,
 }: StaffJoinFormProps) {
   const [label, setLabel] = useState(initialLabel);
@@ -47,13 +53,14 @@ export function StaffJoinForm({
     setError(null);
 
     try {
-      const res = await joinSession(sessionId, trimmed);
+      const res = await joinSession(sessionId, trimmed, inviteCode);
       const identity: StoredStaffIdentity = {
         staffId: res.staffId,
         label: res.label,
+        ...(res.staffToken ? { staffToken: res.staffToken } : {}),
       };
-      saveStaffIdentity(sessionId, identity);
-      onJoined(identity, res.snapshot);
+      const persisted = saveStaffIdentity(sessionId, identity);
+      onJoined(identity, res.snapshot, persisted);
     } catch (err) {
       if (err instanceof ApiClientError) {
         setError(err.message);

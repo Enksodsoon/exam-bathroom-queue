@@ -525,7 +525,10 @@ test.describe('Tier 2 — Queue, Deduplication, Occupancy & Reorder/Remove Bound
     const f1 = await api.submitEntry(s.sessionId, { sex: 'F', studentNumber: 'F1' });
     const f2 = await api.submitEntry(s.sessionId, { sex: 'F', studentNumber: 'F2' });
     await api.entryAction(s.sessionId, f1.body.entry.id, s.controllerKey, { action: 'enter' });
-    await api.entryAction(s.sessionId, f1.body.entry.id, s.controllerKey, { action: 'remove' });
+    const rem = await api.entryAction(s.sessionId, f1.body.entry.id, s.controllerKey, { action: 'remove' });
+    expect(rem.status).toBe(409);
+    const ret = await api.entryAction(s.sessionId, f1.body.entry.id, s.controllerKey, { action: 'return' });
+    expect(ret.status).toBe(200);
 
     const enter2 = await api.entryAction(s.sessionId, f2.body.entry.id, s.controllerKey, {
       action: 'enter',

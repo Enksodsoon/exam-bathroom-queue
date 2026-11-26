@@ -156,3 +156,39 @@ export function verifyControllerKey(expected: string, provided: string): void {
     throw new ApiHttpError(403, "UNAUTHORIZED", "Invalid controller key");
   }
 }
+
+export type VerifiedActor =
+  | { role: "controller" }
+  | { role: "staff"; staffId: string };
+
+export function verifyActorAuth(
+  request: Request,
+  session: { controllerKey: string; staffTokens?: Record<string, string> },
+): VerifiedActor {
+  const ctrlHeader = request.headers.get("x-controller-key")?.trim() ?? "";
+  if (ctrlHeader.length > 0) {
+    if (!isControllerKeyValid(session.controllerKey, ctrlHeader)) {
+      throw new ApiHttpError(403, "UNAUTHORIZED", "Invalid controller key");
+    }
+    return { role: "controller" };
+  }
+
+  const staffToken = request.headers.get("x-staff-token")?.trim() ?? "";
+  if (staffToken.length > 0) {
+    const staffId = session.staffTokens?.[staffToken];
+    if (!staffId) {
+      throw new ApiHttpError(
+        401,
+        "UNAUTHORIZED",
+        "Invalid or expired staff token",
+      );
+    }
+    return { role: "staff", staffId };
+  }
+
+  throw new ApiHttpError(
+    401,
+    "UNAUTHORIZED",
+    "Authentication required: provide x-controller-key or x-staff-token",
+  );
+}

@@ -32,7 +32,13 @@ export type GetSessionResponse =
 export interface JoinSessionResponse {
   staffId: string;
   label: string;
+  staffToken?: string;
   snapshot: SessionSnapshot;
+}
+
+export interface RequestAuth {
+  controllerKey?: string | null;
+  staffToken?: string | null;
 }
 
 export interface SnapshotResponse {
@@ -76,17 +82,63 @@ export class ApiClientError extends Error {
   }
 }
 
-async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
+const DEFAULT_GET_TIMEOUT_MS = 8_000;
+const DEFAULT_MUTATION_TIMEOUT_MS = 10_000;
+
+async function requestJson<T>(
+  url: string,
+  init?: RequestInit & { timeoutMs?: number },
+): Promise<T> {
   const headers = new Headers(init?.headers);
   if (init?.body !== undefined && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(url, {
-    ...init,
-    headers,
-    cache: "no-store",
-  });
+  const method = (init?.method ?? "GET").toUpperCase();
+  const timeoutMs =
+    init?.timeoutMs ??
+    (method === "GET" ? DEFAULT_GET_TIMEOUT_MS : DEFAULT_MUTATION_TIMEOUT_MS);
+
+  const timeoutController = new AbortController();
+  let timedOut = false;
+  const timeoutId = setTimeout(() => {
+    timedOut = true;
+    timeoutController.abort();
+  }, timeoutMs);
+
+  const callerSignal = init?.signal;
+  const onCallerAbort = () => timeoutController.abort();
+  if (callerSignal) {
+    if (callerSignal.aborted) {
+      clearTimeout(timeoutId);
+      throw new DOMException("Aborted", "AbortError");
+    }
+    callerSignal.addEventListener("abort", onCallerAbort, { once: true });
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...init,
+      headers,
+      signal: timeoutController.signal,
+      cache: "no-store",
+    });
+  } catch (err) {
+    if (timedOut) {
+      throw new ApiClientError(
+        408,
+        "TIMEOUT",
+        "Request timed out. Please check your connection.",
+      );
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+    if (callerSignal) {
+      callerSignal.removeEventListener("abort", onCallerAbort);
+    }
+  }
 
   let parsed: unknown = null;
   try {
@@ -135,14 +187,22 @@ export function getSession(
   sessionId: string,
   sinceVersion?: number,
   signal?: AbortSignal,
+  auth?: RequestAuth,
 ): Promise<GetSessionResponse> {
   const encodedId = encodeURIComponent(sessionId);
   const query =
     sinceVersion !== undefined
       ? `?sinceVersion=${encodeURIComponent(String(sinceVersion))}`
       : "";
+  const headers: Record<string, string> = {};
+  if (auth?.controllerKey) {
+    headers["x-controller-key"] = auth.controllerKey;
+  } else if (auth?.staffToken) {
+    headers["x-staff-token"] = auth.staffToken;
+  }
   return requestJson<GetSessionResponse>(`/api/sessions/${encodedId}${query}`, {
     method: "GET",
+    headers,
     signal,
   });
 }
@@ -150,11 +210,15 @@ export function getSession(
 export function joinSession(
   sessionId: string,
   label: string,
+  inviteCode?: string | null,
 ): Promise<JoinSessionResponse> {
   const encodedId = encodeURIComponent(sessionId);
   return requestJson<JoinSessionResponse>(`/api/sessions/${encodedId}/join`, {
     method: "POST",
-    body: JSON.stringify({ label }),
+    body: JSON.stringify({
+      label,
+      ...(inviteCode ? { inviteCode } : {}),
+    }),
   });
 }
 
@@ -184,12 +248,16 @@ export function updateConfig(
 export function submitEntry(
   sessionId: string,
   input: SubmitStudentInput,
-  controllerKey?: string,
+  controllerKeyOrAuth?: string | RequestAuth,
 ): Promise<SubmitEntryResponse> {
   const encodedId = encodeURIComponent(sessionId);
   const headers: Record<string, string> = {};
-  if (controllerKey) {
-    headers["x-controller-key"] = controllerKey;
+  if (typeof controllerKeyOrAuth === "string") {
+    headers["x-controller-key"] = controllerKeyOrAuth;
+  } else if (controllerKeyOrAuth?.controllerKey) {
+    headers["x-controller-key"] = controllerKeyOrAuth.controllerKey;
+  } else if (controllerKeyOrAuth?.staffToken) {
+    headers["x-staff-token"] = controllerKeyOrAuth.staffToken;
   }
 
   return requestJson<SubmitEntryResponse>(
@@ -246,6 +314,7 @@ export function reorderEntry(
 export function clearSession(
   sessionId: string,
   controllerKey: string,
+  options?: { force?: boolean },
 ): Promise<SnapshotResponse> {
   const encodedId = encodeURIComponent(sessionId);
   return requestJson<SnapshotResponse>(`/api/sessions/${encodedId}/clear`, {
@@ -253,6 +322,23 @@ export function clearSession(
     headers: {
       "x-controller-key": controllerKey,
     },
-    body: "{}",
+    body: JSON.stringify(options?.force ? { force: true } : {}),
   });
+}
+
+export function rotateInvite(
+  sessionId: string,
+  controllerKey: string,
+): Promise<SnapshotResponse> {
+  const encodedId = encodeURIComponent(sessionId);
+  return requestJson<SnapshotResponse>(
+    `/api/sessions/${encodedId}/rotate-invite`,
+    {
+      method: "POST",
+      headers: {
+        "x-controller-key": controllerKey,
+      },
+      body: "{}",
+    },
+  );
 }

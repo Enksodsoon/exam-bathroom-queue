@@ -214,7 +214,10 @@ describe("Tier 5 Adversarial Storage & API Integration Tests", () => {
 
     // Subsequent GET remains 200 and preserves original valid config
     const getAfter = await getSessionRoute(
-      makeRawRequest(`/api/sessions/${id}`, { method: "GET" }),
+      makeRawRequest(`/api/sessions/${id}`, {
+        method: "GET",
+        headers: { "x-controller-key": created.controllerKey },
+      }),
       { params: Promise.resolve({ id }) },
     );
     expect(getAfter.status).toBe(200);
@@ -268,7 +271,10 @@ describe("Tier 5 Adversarial Storage & API Integration Tests", () => {
 
     // sinceVersion edge cases
     const minusZeroRes = await getSessionRoute(
-      makeRawRequest(`/api/sessions/${id}?sinceVersion=-0`, { method: "GET" }),
+      makeRawRequest(`/api/sessions/${id}?sinceVersion=-0`, {
+        method: "GET",
+        headers: { "x-controller-key": key },
+      }),
       { params: Promise.resolve({ id }) },
     );
     expect(minusZeroRes.status).toBe(200);
@@ -376,12 +382,18 @@ describe("Tier 5 Adversarial Storage & API Integration Tests", () => {
       { params: Promise.resolve({ id }) },
     );
     expect(joinRes.status).toBe(200);
-    const joinBody = (await joinRes.json()) as { staffId: string };
+    const joinBody = (await joinRes.json()) as {
+      staffId: string;
+      staffToken: string;
+    };
 
     const submitWithPaddedId = await submitEntryRoute(
       makeRawRequest(`/api/sessions/${id}/entries`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "x-staff-token": joinBody.staffToken,
+        },
         rawBody: JSON.stringify({
           sex: "M",
           studentNumber: "TRIM-1",

@@ -7,6 +7,7 @@ import {
   applyEntryAction,
   clearSession,
   reorderEntry,
+  rotateInvite,
   submitEntry,
   updateConfig,
 } from "@/lib/client/api";
@@ -45,7 +46,9 @@ interface ControllerDashboardProps {
   controllerKey: string;
   snapshot: SessionSnapshot | null;
   syncError: string | null;
+  syncStale?: boolean;
   lastSyncedAtMs: number | null;
+  lastSyncedAgeSeconds?: number | null;
   alert: UseNextStudentAlertResult;
   onMutationSnapshot: (snapshot: SessionSnapshot) => void;
 }
@@ -64,11 +67,19 @@ export function ControllerDashboard({
   controllerKey,
   snapshot,
   syncError,
+  syncStale = false,
   lastSyncedAtMs,
+  lastSyncedAgeSeconds = null,
   alert,
   onMutationSnapshot,
 }: ControllerDashboardProps) {
   const [activeDrawer, setActiveDrawer] = useState<ActiveDrawer>(null);
+  const timerBtnRef = useRef<HTMLButtonElement | null>(null);
+  const qrBtnRef = useRef<HTMLButtonElement | null>(null);
+  const staffBtnRef = useRef<HTMLButtonElement | null>(null);
+  const lastDrawerRef = useRef<ActiveDrawer>(null);
+  const [rotatingInvite, setRotatingInvite] = useState(false);
+  const [confirmShortDuration, setConfirmShortDuration] = useState(false);
   const [configDraft, setConfigDraft] = useState<ConfigDraft | null>(null);
   const [savingConfig, setSavingConfig] = useState(false);
   const savingConfigRef = useRef(false);
@@ -207,11 +218,24 @@ export function ControllerDashboard({
     }
 
     const duration = Number(activeConfig.durationMinutes);
-    if (!Number.isFinite(duration) || duration < 1) {
+    if (
+      !Number.isFinite(duration) ||
+      !Number.isInteger(duration) ||
+      duration < 1
+    ) {
       setConfigMessageState({
         clearedSeq: currentClearedSeq,
         tone: "error",
-        text: "Duration must be ≥ 1 min.",
+        text: "Duration must be a whole integer ≥ 1 min.",
+      });
+      return;
+    }
+
+    if (duration <= 50 && !confirmShortDuration) {
+      setConfigMessageState({
+        clearedSeq: currentClearedSeq,
+        tone: "error",
+        text: "Confirm short duration (no normal bathroom window) before saving.",
       });
       return;
     }
@@ -293,10 +317,13 @@ export function ControllerDashboard({
             submittedBy: "Controller",
             ...(useOverride ? { override: true } : {}),
           },
-          useOverride ? controllerKey : undefined,
+          controllerKey,
         );
         onMutationSnapshot(res.snapshot);
         setAddStudentNumber("");
+        if (useOverride) {
+          setOverrideEnabled(false);
+        }
         setStudentMessageState({
           clearedSeq: res.snapshot.clearedSeq,
           tone: "success",
@@ -336,6 +363,9 @@ export function ControllerDashboard({
           useOverride ? { override: true } : undefined,
         );
         onMutationSnapshot(res.snapshot);
+        if (useOverride) {
+          setOverrideEnabled(false);
+        }
       });
     } catch (err) {
       setQueueErrorState({
@@ -380,7 +410,7 @@ export function ControllerDashboard({
     }
   };
 
-  const handleClearSession = async () => {
+  const handleClearSession = async (force = false) => {
     if (clearingSessionRef.current) {
       return;
     }
@@ -390,7 +420,7 @@ export function ControllerDashboard({
     setQueueErrorState(null);
     try {
       await enqueueMutation(async () => {
-        const res = await clearSession(sessionId, controllerKey);
+        const res = await clearSession(sessionId, controllerKey, { force });
         onMutationSnapshot(res.snapshot);
         setConfirmingClear(false);
         setClearMessage({
@@ -412,9 +442,56 @@ export function ControllerDashboard({
     }
   };
 
-  const toggleDrawer = (drawer: Exclude<ActiveDrawer, null>) => {
-    setActiveDrawer((prev) => (prev === drawer ? null : drawer));
+  const handleRotateInvite = async () => {
+    if (rotatingInvite) {
+      return;
+    }
+    setRotatingInvite(true);
+    try {
+      await enqueueMutation(async () => {
+        const res = await rotateInvite(sessionId, controllerKey);
+        onMutationSnapshot(res.snapshot);
+      });
+    } catch (err) {
+      setQueueErrorState({
+        clearedSeq: latestClearedSeqRef.current,
+        text:
+          err instanceof ApiClientError
+            ? err.message
+            : "Failed to rotate join link.",
+      });
+    } finally {
+      setRotatingInvite(false);
+    }
   };
+
+  const closeDrawer = () => {
+    const prev = lastDrawerRef.current;
+    setActiveDrawer(null);
+    lastDrawerRef.current = null;
+    queueMicrotask(() => {
+      if (prev === "timer") timerBtnRef.current?.focus();
+      else if (prev === "qr") qrBtnRef.current?.focus();
+      else if (prev === "staff") staffBtnRef.current?.focus();
+    });
+  };
+
+  const toggleDrawer = (drawer: Exclude<ActiveDrawer, null>) => {
+    if (activeDrawer === drawer) {
+      closeDrawer();
+      return;
+    }
+    lastDrawerRef.current = drawer;
+    setActiveDrawer(drawer);
+  };
+
+  const showTestClock =
+    process.env.NEXT_PUBLIC_VERCEL_ENV !== "production" ||
+    process.env.NEXT_PUBLIC_EXAMQ_TEST_CLOCK === "1";
+
+  const activeInBathroom = snapshot.entries.filter(
+    (entry) => entry.status === "in_bathroom",
+  );
 
   return (
     <div className="space-y-4">
@@ -446,27 +523,41 @@ export function ControllerDashboard({
               compact
             />
 
-            <span className="font-mono text-xs text-slate-500 tabular-nums">
+            <span className="font-mono text-xs text-slate-600 tabular-nums">
               {formatTimeOnly(snapshot.effectiveNowMs)}
             </span>
 
-            {lastSyncedAtMs !== null && (
+            {syncStale ? (
               <span
-                title="Live Sync"
-                className="h-2 w-2 rounded-full bg-emerald-500"
-              />
+                data-testid="sync-stale-badge"
+                className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-900"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-600" />
+                Stale
+                {lastSyncedAgeSeconds !== null
+                  ? ` · ${lastSyncedAgeSeconds}s`
+                  : ""}
+              </span>
+            ) : (
+              lastSyncedAtMs !== null && (
+                <span
+                  title="Live Sync"
+                  className="h-2 w-2 rounded-full bg-emerald-700"
+                />
+              )
             )}
           </div>
 
           {/* Single-Tap Icon Triggers */}
           <div className="flex flex-wrap items-center gap-1.5">
             <button
+              ref={timerBtnRef}
               type="button"
               onClick={() => toggleDrawer("timer")}
               aria-expanded={activeDrawer === "timer"}
               aria-label="Exam Timer Settings"
               title="Exam Timer Settings"
-              className={`inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition ${
+              className={`inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition focus:ring-2 focus:ring-slate-400 focus:outline-none ${
                 activeDrawer === "timer"
                   ? "bg-slate-900 text-white"
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -477,12 +568,13 @@ export function ControllerDashboard({
             </button>
 
             <button
+              ref={qrBtnRef}
               type="button"
               onClick={() => toggleDrawer("qr")}
               aria-expanded={activeDrawer === "qr"}
               aria-label="Share QR Code"
               title="Share QR Code"
-              className={`inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition ${
+              className={`inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition focus:ring-2 focus:ring-slate-400 focus:outline-none ${
                 activeDrawer === "qr"
                   ? "bg-slate-900 text-white"
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -493,12 +585,13 @@ export function ControllerDashboard({
             </button>
 
             <button
+              ref={staffBtnRef}
               type="button"
               onClick={() => toggleDrawer("staff")}
               aria-expanded={activeDrawer === "staff"}
               aria-label="Connected Staff"
-              title="Connected Staff"
-              className={`inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition ${
+              title="Checked In Staff"
+              className={`inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition focus:ring-2 focus:ring-slate-400 focus:outline-none ${
                 activeDrawer === "staff"
                   ? "bg-slate-900 text-white"
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -543,23 +636,35 @@ export function ControllerDashboard({
                 <ResetIcon className="h-4 w-4" />
               </button>
             ) : (
-              <div className="flex items-center gap-1 rounded-full bg-rose-50 p-1">
+              <div className="flex flex-wrap items-center gap-1.5 rounded-full bg-rose-50 p-1">
+                {activeInBathroom.length > 0 && (
+                  <span className="px-2 text-[11px] font-semibold text-rose-900">
+                    Out:{" "}
+                    {activeInBathroom
+                      .map((e) => `#${e.studentNumber}`)
+                      .join(", ")}
+                  </span>
+                )}
                 <button
                   type="button"
                   disabled={clearingSession}
                   onClick={() => {
-                    void handleClearSession();
+                    void handleClearSession(activeInBathroom.length > 0);
                   }}
-                  className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-rose-600 px-3.5 text-xs font-semibold text-white transition hover:bg-rose-700 disabled:opacity-50"
+                  className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-rose-700 px-3.5 text-xs font-semibold text-white transition hover:bg-rose-800 disabled:opacity-50"
                 >
-                  {clearingSession ? "..." : "Confirm Clear"}
+                  {clearingSession
+                    ? "..."
+                    : activeInBathroom.length > 0
+                      ? "Force Clear"
+                      : "Confirm Clear"}
                 </button>
                 <button
                   type="button"
                   disabled={clearingSession}
                   onClick={() => setConfirmingClear(false)}
                   aria-label="Cancel"
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-600 hover:bg-slate-100"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 hover:bg-slate-100"
                 >
                   <CloseIcon className="h-3.5 w-3.5" />
                 </button>
@@ -606,9 +711,9 @@ export function ControllerDashboard({
             </div>
             <button
               type="button"
-              onClick={() => setActiveDrawer(null)}
+              onClick={closeDrawer}
               aria-label="Close Timer"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:ring-2 focus:ring-slate-400 focus:outline-none"
             >
               <CloseIcon className="h-4 w-4" />
             </button>
@@ -658,23 +763,24 @@ export function ControllerDashboard({
                   {mins}m
                 </button>
               ))}
-              {[-35, 0, 35, 105].map((mins) => (
-                <button
-                  key={mins}
-                  type="button"
-                  onClick={() => updateDraft({ offsetMinutes: String(mins) })}
-                  className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-3 text-xs font-mono font-medium text-slate-700 hover:bg-slate-100"
-                >
-                  {mins > 0 ? `+${mins}m` : `${mins}m`}
-                </button>
-              ))}
+              {showTestClock &&
+                [-35, 0, 35, 105].map((mins) => (
+                  <button
+                    key={mins}
+                    type="button"
+                    onClick={() => updateDraft({ offsetMinutes: String(mins) })}
+                    className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-3 text-xs font-mono font-medium text-slate-700 hover:bg-slate-100"
+                  >
+                    {mins > 0 ? `+${mins}m` : `${mins}m`}
+                  </button>
+                ))}
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div>
                 <label
                   htmlFor="exam-start-time"
-                  className="mb-1 block text-[11px] font-medium text-slate-500"
+                  className="mb-1 block text-[11px] font-medium text-slate-600"
                 >
                   Start
                 </label>
@@ -696,7 +802,7 @@ export function ControllerDashboard({
               <div>
                 <label
                   htmlFor="exam-duration-minutes"
-                  className="mb-1 block text-[11px] font-medium text-slate-500"
+                  className="mb-1 block text-[11px] font-medium text-slate-600"
                 >
                   Duration (min)
                 </label>
@@ -707,38 +813,50 @@ export function ControllerDashboard({
                   min={1}
                   step={1}
                   value={activeConfig.durationMinutes}
-                  onChange={(e) =>
-                    updateDraft({ durationMinutes: e.target.value })
-                  }
+                  onChange={(e) => {
+                    updateDraft({ durationMinutes: e.target.value });
+                    setConfirmShortDuration(false);
+                  }}
                   className="min-h-[44px] w-full rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-1.5 font-mono text-xs text-slate-900 focus:border-slate-900 focus:bg-white focus:outline-none"
                 />
               </div>
 
-              <div>
-                <label
-                  htmlFor="exam-clock-offset"
-                  className="mb-1 block text-[11px] font-medium text-slate-500"
-                >
-                  Offset (min)
-                </label>
-                <input
-                  id="exam-clock-offset"
-                  name="clockOffsetMinutes"
-                  type="number"
-                  step={1}
-                  value={activeConfig.offsetMinutes}
-                  onChange={(e) =>
-                    updateDraft({ offsetMinutes: e.target.value })
-                  }
-                  className="min-h-[44px] w-full rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-1.5 font-mono text-xs text-slate-900 focus:border-slate-900 focus:bg-white focus:outline-none"
-                />
-              </div>
+              {showTestClock && (
+                <div>
+                  <label
+                    htmlFor="exam-clock-offset"
+                    className="mb-1 block text-[11px] font-medium text-slate-600"
+                  >
+                    Offset (min)
+                  </label>
+                  <input
+                    id="exam-clock-offset"
+                    name="clockOffsetMinutes"
+                    type="number"
+                    step={1}
+                    value={activeConfig.offsetMinutes}
+                    onChange={(e) =>
+                      updateDraft({ offsetMinutes: e.target.value })
+                    }
+                    className="min-h-[44px] w-full rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-1.5 font-mono text-xs text-slate-900 focus:border-slate-900 focus:bg-white focus:outline-none"
+                  />
+                </div>
+              )}
             </div>
 
             {showShortDurationWarning && (
-              <p className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                Duration ≤ 50m leaves no open middle window (30m + 20m).
-              </p>
+              <label className="flex cursor-pointer items-center gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs font-medium text-amber-900">
+                <input
+                  type="checkbox"
+                  checked={confirmShortDuration}
+                  onChange={(e) => setConfirmShortDuration(e.target.checked)}
+                  className="h-4 w-4 shrink-0 rounded border-amber-400 text-amber-800"
+                />
+                <span>
+                  Duration ≤ 50m leaves no normal bathroom window (first 30m +
+                  last 20m). Confirm override-only exam.
+                </span>
+              </label>
             )}
 
             {configMessage && (
@@ -765,29 +883,38 @@ export function ControllerDashboard({
         </section>
       )}
 
-      {activeDrawer === "qr" && <QrShareCard sessionId={sessionId} />}
+      {activeDrawer === "qr" && (
+        <QrShareCard
+          sessionId={sessionId}
+          inviteCode={snapshot.inviteCode}
+          rotatingInvite={rotatingInvite}
+          onRotateInvite={() => {
+            void handleRotateInvite();
+          }}
+        />
+      )}
 
       {activeDrawer === "staff" && (
         <section
-          aria-label="Connected Staff"
+          aria-label="Checked In Staff"
           className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs"
         >
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-slate-900">
-              Connected Staff ({snapshot.staff.length})
+              Checked In ({snapshot.staff.length})
             </h2>
             <button
               type="button"
-              onClick={() => setActiveDrawer(null)}
+              onClick={closeDrawer}
               aria-label="Close Staff List"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:ring-2 focus:ring-slate-400 focus:outline-none"
             >
               <CloseIcon className="h-4 w-4" />
             </button>
           </div>
           {snapshot.staff.length === 0 ? (
-            <p className="text-xs text-slate-500">
-              No roaming staff joined yet.
+            <p className="text-xs text-slate-600">
+              No roaming staff checked in yet.
             </p>
           ) : (
             <div className="flex flex-wrap gap-2">
@@ -796,9 +923,9 @@ export function ControllerDashboard({
                   key={member.id}
                   className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-800"
                 >
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-700" />
                   <span className="max-w-[160px] truncate">{member.label}</span>
-                  <span className="font-mono text-[11px] text-slate-400">
+                  <span className="font-mono text-[11px] text-slate-600">
                     {formatTimeOnly(member.joinedAt)}
                   </span>
                 </span>

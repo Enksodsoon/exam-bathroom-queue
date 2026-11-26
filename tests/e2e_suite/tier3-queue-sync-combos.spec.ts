@@ -175,7 +175,12 @@ test.describe('Tier 3 — Queue, Sync, Reorder, Remove & Race Combinations (T3-0
     const rem = await api.entryAction(s.sessionId, m1.body.entry.id, s.controllerKey, {
       action: 'remove',
     });
-    expect(rem.status).toBe(200);
+    expect(rem.status).toBe(409);
+
+    const ret = await api.entryAction(s.sessionId, m1.body.entry.id, s.controllerKey, {
+      action: 'return',
+    });
+    expect(ret.status).toBe(200);
 
     const enter2 = await api.entryAction(s.sessionId, m2.body.entry.id, s.controllerKey, {
       action: 'enter',

@@ -69,9 +69,12 @@ describe("Domain Engine", () => {
 
       const snapshot = toSessionSnapshot(session, 1_005_000);
       expect("controllerKey" in snapshot).toBe(false);
+      expect("staffTokens" in snapshot).toBe(false);
       expect("alertSeq" in snapshot).toBe(false);
       expect(snapshot).toEqual({
         id: "s-1",
+        inviteCode: "s-3",
+        inviteVersion: 1,
         createdAt: 1_000_000,
         version: 1,
         clearedSeq: 0,
@@ -680,13 +683,22 @@ describe("Domain Engine", () => {
       );
       expect(m2Entered.entry.status).toBe("in_bathroom");
 
-      // Remove active entry allowed anytime (AFTER_END)
-      const m2Removed = applyEntryAction(
+      // Remove active in_bathroom entry is rejected (must mark returned)
+      expect(() =>
+        applyEntryAction(
+          m2Entered.session,
+          { entryId: m2.entry.id, action: "remove" },
+          afterEndNow + 2000,
+        ),
+      ).toThrow(DomainError);
+
+      // Returning active entry is allowed anytime (AFTER_END)
+      const m2Returned = applyEntryAction(
         m2Entered.session,
-        { entryId: m2.entry.id, action: "remove" },
+        { entryId: m2.entry.id, action: "return" },
         afterEndNow + 2000,
       );
-      expect(m2Removed.entry.status).toBe("removed");
+      expect(m2Returned.entry.status).toBe("returned");
     });
 
     it("rejects invalid state transitions and unknown entryId", () => {
@@ -1180,7 +1192,11 @@ describe("Domain Engine", () => {
       expect(session.alertSeq).toBe(2);
       const prevVersion = session.version;
 
-      const cleared = clearSession(session, now + 400);
+      // Normal clear is blocked while F200 is still in_bathroom
+      expect(() => clearSession(session, now + 400)).toThrow(DomainError);
+
+      // Explicit force clear succeeds
+      const cleared = clearSession(session, now + 400, { force: true });
       expect(cleared.entries).toEqual([]);
       expect(cleared.nextBySex).toEqual({ M: null, F: null });
       expect(cleared.lastNextAlert).toBeNull();

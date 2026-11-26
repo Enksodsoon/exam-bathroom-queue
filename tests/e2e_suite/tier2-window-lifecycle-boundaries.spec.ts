@@ -297,11 +297,15 @@ test.describe('Tier 2 — Time-Window, Clock Offset, Override & Clear Boundaries
     const api = new ExamQApiClient(request);
     const s = await createConfiguredSession(api);
 
-    const res = await api.submitEntry(s.sessionId, {
-      sex: 'M',
-      studentNumber: 'SPOOF-OVR',
-      override: true,
-    });
+    const res = await api.submitEntry(
+      s.sessionId,
+      {
+        sex: 'M',
+        studentNumber: 'SPOOF-OVR',
+        override: true,
+      },
+      null,
+    );
     expect([401, 403]).toContain(res.status);
   });
 
@@ -461,7 +465,7 @@ test.describe('Tier 2 — Time-Window, Clock Offset, Override & Clear Boundaries
     await api.entryAction(s.sessionId, e2.body.entry.id, s.controllerKey, { action: 'enter' });
     await api.entryAction(s.sessionId, e4.body.entry.id, s.controllerKey, { action: 'remove' });
 
-    const clr = await api.clear(s.sessionId, s.controllerKey);
+    const clr = await api.clear(s.sessionId, s.controllerKey, { force: true });
     expect(clr.status).toBe(200);
     expect(clr.body.snapshot.entries).toEqual([]);
     expect(clr.body.snapshot.nextBySex).toEqual({ M: null, F: null });
@@ -475,7 +479,7 @@ test.describe('Tier 2 — Time-Window, Clock Offset, Override & Clear Boundaries
     const e = await api.submitEntry(s.sessionId, { sex: 'F', studentNumber: 'REUSE-F' });
     await api.entryAction(s.sessionId, e.body.entry.id, s.controllerKey, { action: 'enter' });
 
-    await api.clear(s.sessionId, s.controllerKey);
+    await api.clear(s.sessionId, s.controllerKey, { force: true });
     const reSub = await api.submitEntry(s.sessionId, { sex: 'F', studentNumber: 'REUSE-F' });
     expect(reSub.status).toBe(201);
   });

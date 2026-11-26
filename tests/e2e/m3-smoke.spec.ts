@@ -426,7 +426,7 @@ test.describe("M3 Exam Bathroom Queue E2E", () => {
 
       // Clear session dismisses active alert and resets all queues across clients
       await page.getByRole("button", { name: "Clear Session" }).click();
-      await page.getByRole("button", { name: "Confirm Clear" }).click();
+      await page.getByRole("button", { name: /Confirm Clear|Force Clear/i }).click();
 
       await expect(staff.page.getByTestId("next-student-alert")).toHaveCount(0);
       await expect(
@@ -493,6 +493,9 @@ test.describe("M3 Exam Bathroom Queue E2E", () => {
         page.getByTestId("queue-column-M").getByText("#W101"),
       ).toBeVisible();
 
+      await page
+        .getByRole("switch", { name: /Controller Override/i })
+        .click();
       await page
         .getByTestId("queue-column-M")
         .locator("li[data-student-number='W101']")

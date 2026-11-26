@@ -319,7 +319,10 @@ test.describe('Tier 1 — Session Access & Role Separation (F-S1..F-S4)', () => 
     });
     expect(act.status).toBe(200);
 
-    const clr = await api.clear(sid, key);
+    const clrBlocked = await api.clear(sid, key);
+    expect(clrBlocked.status).toBe(409);
+
+    const clr = await api.clear(sid, key, { force: true });
     expect(clr.status).toBe(200);
     expect(clr.body.snapshot.entries).toEqual([]);
   });
