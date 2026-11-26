@@ -377,7 +377,10 @@ describe("Tier 5 Adversarial Storage & API Integration Tests", () => {
       makeRawRequest(`/api/sessions/${id}/join`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        rawBody: JSON.stringify({ label: "Gym Wing" }),
+        rawBody: JSON.stringify({
+          label: "Gym Wing",
+          inviteCode: created.snapshot.inviteCode,
+        }),
       }),
       { params: Promise.resolve({ id }) },
     );

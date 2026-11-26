@@ -160,8 +160,9 @@ test.describe('Tier 4 — 10-Client Real-World Simulations & Cross-Device Matrix
         await st.expectAlertContains('TM-3');
         await expect(async () => {
           const tel = await readAlertTelemetry(st.page);
-          expect(effectiveAudioCount(tel)).toBeGreaterThanOrEqual(1);
-          expect(effectiveVibrateCount(tel)).toBeGreaterThanOrEqual(1);
+          expect(effectiveAudioCount(tel)).toBe(0);
+          expect(effectiveVibrateCount(tel)).toBe(0);
+          expect(tel.alertTexts.length).toBeGreaterThanOrEqual(1);
         }).toPass({ timeout: 5_000 });
       }
 
@@ -357,13 +358,14 @@ test.describe('Tier 4 — 10-Client Real-World Simulations & Cross-Device Matrix
         const telB = await readAlertTelemetry(pageB);
         const telC = await readAlertTelemetry(pageC);
 
-        expect(effectiveAudioCount(telA)).toBeGreaterThanOrEqual(2);
-        expect(effectiveVibrateCount(telA)).toBeGreaterThanOrEqual(2);
+        expect(effectiveAudioCount(telA)).toBe(0);
+        expect(effectiveVibrateCount(telA)).toBe(0);
+        expect(telA.alertTexts.length).toBeGreaterThanOrEqual(1);
 
         expect(effectiveAudioCount(telB)).toBe(0);
         expect(effectiveVibrateCount(telB)).toBe(0);
 
-        expect(effectiveAudioCount(telC)).toBeGreaterThanOrEqual(2);
+        expect(effectiveAudioCount(telC)).toBe(0);
         expect(telC.mediaSpy.vibrateCalls).toEqual([]);
       }).toPass();
 

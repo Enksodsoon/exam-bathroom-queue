@@ -24,8 +24,7 @@ test("minimal home and check-in retain named controls, alerts, and critical warn
     await staff.getByRole("textbox", {name:"Your Name or Label"}).fill("Synthetic Hall");
     await staff.getByRole("button",{name:"Join Session"}).click();
     await expect(staff.getByTestId("staff-window-block-notice")).toContainText("Timer not set.");
-    await staff.getByRole("button", {name:"Test in-tab alert"}).click();
-    await expect(staff.getByRole("status").filter({hasText:"Test alert."})).toBeVisible();
+    await expect(staff.getByTestId("push-pilot-status")).toContainText(/Not enabled|Unavailable/);
     expect(await staff.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   } finally {
     await ctx.close();

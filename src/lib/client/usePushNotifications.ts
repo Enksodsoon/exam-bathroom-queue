@@ -11,6 +11,14 @@ export type PushPermissionState =
   | NotificationPermission
   | "unsupported";
 
+export type PushTestState = "idle" | "sending" | "sent" | "error";
+
+export type PushPilotStatus =
+  | "unavailable"
+  | "not_enabled"
+  | "test_needed"
+  | "test_sent";
+
 export interface UsePushNotificationsResult {
   supported: boolean;
   vapidConfigured: boolean;
@@ -18,10 +26,13 @@ export interface UsePushNotificationsResult {
   isSubscribed: boolean;
   isBusy: boolean;
   isIosBrowserNotStandalone: boolean;
+  testState: PushTestState;
+  pilotStatus: PushPilotStatus;
   error: string | null;
   enablePush: () => Promise<boolean>;
   disablePush: () => Promise<void>;
   togglePush: () => Promise<void>;
+  testLockScreenAlert: () => Promise<boolean>;
 }
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
@@ -144,6 +155,7 @@ export function usePushNotifications(
 
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
+  const [testState, setTestState] = useState<PushTestState>("idle");
   const [error, setError] = useState<string | null>(null);
 
   const hasAuth = Boolean(auth.controllerKey || auth.staffToken);
@@ -285,6 +297,67 @@ export function usePushNotifications(
     }
   }, [disablePush, enablePush, isSubscribed]);
 
+  const testLockScreenAlert = useCallback(async (): Promise<boolean> => {
+    setError(null);
+    if (!supported) {
+      setTestState("error");
+      setError("Push notifications are not supported on this browser.");
+      return false;
+    }
+    setTestState("sending");
+    try {
+      await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub && hasAuth && vapidConfigured) {
+        const res = await fetch(
+          `/api/sessions/${encodeURIComponent(sessionId)}/push-test`,
+          {
+            method: "POST",
+            headers: buildAuthHeaders(auth),
+            body: JSON.stringify({ endpoint: sub.endpoint }),
+          },
+        );
+        if (res.ok) {
+          setTestState("sent");
+          return true;
+        }
+      }
+
+      if (Notification.permission === "granted") {
+        await reg.showNotification("ExamQ · Lock-screen test", {
+          body: "Quiet alert check — tap to return to ExamQ.",
+          icon: "/icons/icon-192.png",
+          badge: "/icons/icon-192.png",
+          tag: `examq-test-${sessionId}`,
+          silent: true,
+          renotify: true,
+        } as NotificationOptions);
+        setTestState("sent");
+        return true;
+      }
+
+      setTestState("error");
+      setError("Enable alerts first to run a lock-screen test.");
+      return false;
+    } catch (err) {
+      setTestState("error");
+      setError(
+        err instanceof Error ? err.message : "Lock-screen test failed.",
+      );
+      return false;
+    }
+  }, [auth, hasAuth, sessionId, supported, vapidConfigured]);
+
+  const pilotStatus: PushPilotStatus =
+    !supported || !vapidConfigured || permission === "denied"
+      ? "unavailable"
+      : !isSubscribed
+        ? "not_enabled"
+        : testState === "sent"
+          ? "test_sent"
+          : "test_needed";
+
   return {
     supported,
     vapidConfigured,
@@ -292,9 +365,12 @@ export function usePushNotifications(
     isSubscribed,
     isBusy,
     isIosBrowserNotStandalone,
+    testState,
+    pilotStatus,
     error,
     enablePush,
     disablePush,
     togglePush,
+    testLockScreenAlert,
   };
 }

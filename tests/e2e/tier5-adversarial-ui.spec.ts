@@ -316,7 +316,9 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
     const staffErrors = attachErrorListeners(staffPage);
 
     try {
-      await staffPage.goto(created.joinUrl);
+      await staffPage.goto(
+        `${created.joinUrl}?invite=${encodeURIComponent(created.snapshot.inviteCode)}`,
+      );
       await staffPage.locator("#staff-label-input").fill("Late Joiner");
       await staffPage.getByRole("button", { name: "Join Session" }).click();
       await expect(
@@ -337,20 +339,17 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
           .getByTestId("next-student-alert")
           .getByText("#POST-1"),
       ).toBeVisible({ timeout: 10_000 });
-      await expect(telemetry).toHaveAttribute("data-audio-alert-count", "1");
-      await expect(telemetry).toHaveAttribute("data-vibrate-alert-count", "1");
+      await expect(telemetry).toHaveAttribute("data-audio-alert-count", "0");
+      await expect(telemetry).toHaveAttribute("data-vibrate-alert-count", "0");
       await expect(telemetry).toHaveAttribute("data-last-alert-seq", "5");
 
       const alertDetails = await staffPage.evaluate(() => ({
         stats: (window as unknown as { __examqAlertStats?: unknown })
           .__examqAlertStats,
-        vibrateLen: (window as unknown as { __vibrateCalls?: number[][] })
-          .__vibrateCalls?.length,
       }));
-      expect(alertDetails.vibrateLen).toBe(1);
       expect(alertDetails.stats).toMatchObject({
-        audioAlertCount: 1,
-        vibrateAlertCount: 1,
+        audioAlertCount: 0,
+        vibrateAlertCount: 0,
         visualAlertCount: 1,
         lastAlertSeq: 5,
       });
@@ -449,7 +448,9 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
     const errors = attachErrorListeners(staffPage);
 
     try {
-      await staffPage.goto(created.joinUrl);
+      await staffPage.goto(
+        `${created.joinUrl}?invite=${encodeURIComponent(created.snapshot.inviteCode)}`,
+      );
       await staffPage.locator("#staff-label-input").fill("Audio Fail Test");
       await staffPage.getByRole("button", { name: "Join Session" }).click();
       await expect(
@@ -523,7 +524,9 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
     const staffPage2 = await ctx2.newPage();
     const errors2 = attachErrorListeners(staffPage2);
     try {
-      await staffPage2.goto(created.joinUrl);
+      await staffPage2.goto(
+        `${created.joinUrl}?invite=${encodeURIComponent(created.snapshot.inviteCode)}`,
+      );
       await staffPage2.locator("#staff-label-input").fill("Resume Reject Test");
       await staffPage2.getByRole("button", { name: "Join Session" }).click();
       await expect(
@@ -592,7 +595,11 @@ test.describe("Tier 5 Adversarial UI & Resilience E2E", () => {
     const staffErrors = attachErrorListeners(staffPage);
 
     try {
-      await staffPage.goto(`/s/${sessionId}`);
+      await page.getByRole("button", { name: "Share QR Code" }).click();
+      const joinUrl = await page
+        .getByRole("textbox", { name: "Staff Join Link" })
+        .inputValue();
+      await staffPage.goto(joinUrl);
       await staffPage.locator("#staff-label-input").fill("Double Clicker");
       await staffPage.getByRole("button", { name: "Join Session" }).dblclick();
       await expect(

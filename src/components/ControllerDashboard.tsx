@@ -5,6 +5,7 @@ import { FIRST_BLOCK_MINUTES, LAST_BLOCK_MINUTES, MAX_BLOCK_MINUTES, getExamBloc
 import type { EntryAction, SessionSnapshot, Sex } from "@/lib/domain/types";
 import {
   ApiClientError,
+  acknowledgeAlert,
   applyEntryAction,
   clearSession,
   reorderEntry,
@@ -709,7 +710,7 @@ export function ControllerDashboard({
           </div>
         </div>
 
-        <PushAlertsNotice push={push} onTestTabAlert={alert.testTabAlert} />
+        <PushAlertsNotice push={push} />
 
         <span role="status" className="sr-only">
           {syncStale ? t.reconnectingNotice : ""}
@@ -1040,6 +1041,11 @@ export function ControllerDashboard({
         lastAlertSeq={alert.lastAlertSeq}
         onToggleMute={alert.toggleMute}
         onDismiss={alert.dismissAlert}
+        onAcknowledge={(seq) => {
+          void acknowledgeAlert(sessionId, seq, { controllerKey })
+            .then((res) => onMutationSnapshot(res.snapshot))
+            .catch(() => {});
+        }}
         hideMuteControl
       />
 

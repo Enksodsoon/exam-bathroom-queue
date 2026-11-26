@@ -257,19 +257,25 @@ export function useNextStudentAlert(
     [ensureAudioContext],
   );
 
-  const triggerVibrate = useCallback((): boolean => {
-    if (
-      typeof navigator === "undefined" ||
-      typeof navigator.vibrate !== "function"
-    ) {
-      return false;
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
     }
-    try {
-      return navigator.vibrate([200, 100, 200]) !== false;
-    } catch {
-      return false;
+    const unacked =
+      alertState.activeAlert && !alertState.activeAlert.acknowledgedBy;
+    document.title = unacked
+      ? `(1) Next · ExamQ`
+      : "ExamQ · Bathroom Queue";
+    const nav = navigator as unknown as {
+      setAppBadge?: (count?: number) => Promise<void>;
+      clearAppBadge?: () => Promise<void>;
+    };
+    if (unacked) {
+      void nav.setAppBadge?.(1).catch(() => {});
+    } else {
+      void nav.clearAppBadge?.().catch(() => {});
     }
-  }, []);
+  }, [alertState.activeAlert]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -327,6 +333,18 @@ export function useNextStudentAlert(
               activeAlert: null,
             };
           }
+          if (
+            prev.activeAlert &&
+            snapshot.lastNextAlert &&
+            prev.activeAlert.seq === snapshot.lastNextAlert.seq &&
+            snapshot.lastNextAlert.acknowledgedBy !==
+              prev.activeAlert.acknowledgedBy
+          ) {
+            return {
+              ...prev,
+              activeAlert: snapshot.lastNextAlert,
+            };
+          }
           return prev;
         });
         return;
@@ -334,20 +352,8 @@ export function useNextStudentAlert(
 
       if (evaluation.type === "trigger") {
         const isMuted = mutedRef.current;
-        let audioDelta = 0;
-        let vibrateDelta = 0;
 
         if (!isMuted) {
-          const playbackCount = Math.min(evaluation.triggerCount, 10);
-          for (let i = 0; i < playbackCount; i += 1) {
-            if (playChime(i * 0.4)) {
-              audioDelta += 1;
-            }
-            if (triggerVibrate()) {
-              vibrateDelta += 1;
-            }
-          }
-
           if (
             typeof document !== "undefined" &&
             document.visibilityState === "hidden" &&
@@ -362,6 +368,7 @@ export function useNextStudentAlert(
                   icon: "/icons/icon-192.png",
                   badge: "/icons/icon-192.png",
                   tag: `examq-next-${evaluation.alert.sex}`,
+                  silent: true,
                   renotify: true,
                 } as NotificationOptions),
               )
@@ -374,14 +381,14 @@ export function useNextStudentAlert(
 
         setAlertState((prev) => ({
           activeAlert: isStillNext ? evaluation.alert : null,
-          audioAlertCount: prev.audioAlertCount + audioDelta,
-          vibrateAlertCount: prev.vibrateAlertCount + vibrateDelta,
+          audioAlertCount: prev.audioAlertCount,
+          vibrateAlertCount: prev.vibrateAlertCount,
           visualAlertCount: prev.visualAlertCount + evaluation.triggerCount,
           lastAlertSeq: evaluation.alert.seq,
         }));
       }
     },
-    [playChime, triggerVibrate],
+    [],
   );
 
   const toggleMute = useCallback(() => {

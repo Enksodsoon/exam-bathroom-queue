@@ -533,11 +533,24 @@ describe("M2 Storage & REST API Integration", () => {
       expect("controllerKey" in created.snapshot).toBe(false);
       expect("alertSeq" in created.snapshot).toBe(false);
 
+      // Joining without inviteCode is rejected with 403 INVITE_INVALID
+      const uninvitedJoin = await joinSessionRoute(
+        makeRequest(`/api/sessions/${created.sessionId}/join`, {
+          method: "POST",
+          body: { label: "Uninvited" },
+        }),
+        { params: Promise.resolve({ id: created.sessionId }) },
+      );
+      expect(uninvitedJoin.status).toBe(403);
+
       // Join staff & verify case-insensitive dedupe
       const join1 = await joinSessionRoute(
         makeRequest(`/api/sessions/${created.sessionId}/join`, {
           method: "POST",
-          body: { label: "  Room 101  " },
+          body: {
+            label: "  Room 101  ",
+            inviteCode: created.snapshot.inviteCode,
+          },
         }),
         { params: Promise.resolve({ id: created.sessionId }) },
       );
@@ -553,7 +566,10 @@ describe("M2 Storage & REST API Integration", () => {
       const join2 = await joinSessionRoute(
         makeRequest(`/api/sessions/${created.sessionId}/join`, {
           method: "POST",
-          body: { label: "room 101" },
+          body: {
+            label: "room 101",
+            inviteCode: created.snapshot.inviteCode,
+          },
         }),
         { params: Promise.resolve({ id: created.sessionId }) },
       );

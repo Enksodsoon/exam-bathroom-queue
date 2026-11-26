@@ -81,6 +81,18 @@ export interface Translations {
   pushDismissedError: string;
   liveInThisTab: string;
   testAlertRan: string;
+  enableAlerts: string;
+  turnOffAlerts: string;
+  testLockScreen: string;
+  pushStatusNotEnabled: string;
+  pushStatusTestNeeded: string;
+  pushStatusTestSent: string;
+  pushStatusUnavailable: string;
+  testLockScreenSent: string;
+  wakeLockOn: string;
+  wakeLockOff: string;
+  acknowledge: string;
+  coveredBy: string;
 
   // Controller Dashboard
   timerButton: string;
@@ -234,6 +246,18 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     pushDismissedError: "Notification permission was dismissed.",
     liveInThisTab: "Live in this tab",
     testAlertRan: "Test alert. Check volume if silent.",
+    enableAlerts: "Enable alerts",
+    turnOffAlerts: "Turn off",
+    testLockScreen: "Test lock-screen alert",
+    pushStatusNotEnabled: "Not enabled",
+    pushStatusTestNeeded: "Test needed",
+    pushStatusTestSent: "Test acknowledged",
+    pushStatusUnavailable: "Unavailable",
+    testLockScreenSent: "Test sent. Lock phone to verify quiet alert.",
+    wakeLockOn: "Screen Awake",
+    wakeLockOff: "Keep Awake",
+    acknowledge: "Acknowledge",
+    coveredBy: "Covered by",
 
     timerButton: "Timer",
     timerAria: "Exam Timer Settings",
@@ -381,6 +405,18 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     pushDismissedError: "ยกเลิกการขอสิทธิ์แจ้งเตือน",
     liveInThisTab: "แจ้งเตือนสดในแท็บนี้",
     testAlertRan: "ทดสอบแจ้งเตือนแล้ว หากไม่ได้ยินโปรดตรวจระดับเสียง",
+    enableAlerts: "เปิดแจ้งเตือน",
+    turnOffAlerts: "ปิดแจ้งเตือน",
+    testLockScreen: "ทดสอบแจ้งเตือนหน้าจอล็อก",
+    pushStatusNotEnabled: "ยังไม่เปิด",
+    pushStatusTestNeeded: "รอทดสอบ",
+    pushStatusTestSent: "ทดสอบแล้ว",
+    pushStatusUnavailable: "ไม่พร้อมใช้งาน",
+    testLockScreenSent: "ส่งทดสอบแล้ว ลองล็อกหน้าจอเพื่อตรวจสอบ",
+    wakeLockOn: "เปิดจอค้างไว้",
+    wakeLockOff: "กันจอดับ",
+    acknowledge: "รับทราบ",
+    coveredBy: "รับเรื่องโดย",
 
     timerButton: "เวลา",
     timerAria: "ตั้งค่าเวลาสอบ",

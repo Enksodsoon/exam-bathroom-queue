@@ -104,8 +104,9 @@ test.describe('Tier 3 — Alerts, Lifecycle, Mute & Sync Edge Combinations (T3-1
       await staff.expectAlertContains('UNMUTE-2');
       await expect(async () => {
         const unmuted = await readAlertTelemetry(page);
-        expect(effectiveAudioCount(unmuted)).toBeGreaterThanOrEqual(1);
-        expect(effectiveVibrateCount(unmuted)).toBeGreaterThanOrEqual(1);
+        expect(effectiveAudioCount(unmuted)).toBe(0);
+        expect(effectiveVibrateCount(unmuted)).toBe(0);
+        expect(unmuted.alertTexts.length).toBeGreaterThanOrEqual(1);
       }).toPass();
     } finally {
       await ctx.close();

@@ -386,19 +386,17 @@ test.describe("M3 Exam Bathroom Queue E2E", () => {
           .getByTestId("next-student-alert")
           .getByText("#M302"),
       ).toBeVisible();
-      await expect(telemetry).toHaveAttribute("data-audio-alert-count", "1");
-      await expect(telemetry).toHaveAttribute("data-vibrate-alert-count", "1");
+      await expect(telemetry).toHaveAttribute("data-audio-alert-count", "0");
+      await expect(telemetry).toHaveAttribute("data-vibrate-alert-count", "0");
 
       const statsAfterFirst = await staff.page.evaluate(() => ({
         stats: (window as unknown as { __examqAlertStats?: unknown })
           .__examqAlertStats,
-        vibrateCalls: (window as unknown as { __vibrateCalls?: number[][] })
-          .__vibrateCalls,
       }));
-      expect(statsAfterFirst.vibrateCalls?.length).toBe(1);
       expect(statsAfterFirst.stats).toMatchObject({
-        audioAlertCount: 1,
-        vibrateAlertCount: 1,
+        audioAlertCount: 0,
+        vibrateAlertCount: 0,
+        visualAlertCount: 1,
         muted: false,
       });
 
@@ -421,8 +419,8 @@ test.describe("M3 Exam Bathroom Queue E2E", () => {
           .getByTestId("next-student-alert")
           .getByText("#M303"),
       ).toBeVisible();
-      await expect(telemetry).toHaveAttribute("data-audio-alert-count", "1");
-      await expect(telemetry).toHaveAttribute("data-vibrate-alert-count", "1");
+      await expect(telemetry).toHaveAttribute("data-audio-alert-count", "0");
+      await expect(telemetry).toHaveAttribute("data-vibrate-alert-count", "0");
 
       // Clear session dismisses active alert and resets all queues across clients
       await page.getByRole("button", { name: "Clear Session" }).click();

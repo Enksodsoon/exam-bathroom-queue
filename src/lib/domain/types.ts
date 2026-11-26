@@ -38,12 +38,19 @@ export interface StaffMember {
   lastSeenAt: number;
 }
 
+export interface AlertAcknowledgment {
+  actorKey: string;
+  label: string;
+  at: number;
+}
+
 export interface AlertInfo {
   seq: number;
   sex: Sex;
   entryId: string;
   studentNumber: string;
   triggeredAt: number;
+  acknowledgedBy?: AlertAcknowledgment | null;
 }
 
 export interface NextBySex {

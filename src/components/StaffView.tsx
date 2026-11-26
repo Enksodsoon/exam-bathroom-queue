@@ -2,7 +2,11 @@
 
 import { useRef, useState, type FormEvent } from "react";
 import type { SessionSnapshot, Sex } from "@/lib/domain/types";
-import { ApiClientError, submitEntry } from "@/lib/client/api";
+import {
+  ApiClientError,
+  acknowledgeAlert,
+  submitEntry,
+} from "@/lib/client/api";
 import type { StoredStaffIdentity } from "@/lib/client/storage";
 import {
   describeWindowStatus,
@@ -258,7 +262,7 @@ export function StaffView({
           </div>
         </div>
 
-        <PushAlertsNotice push={push} onTestTabAlert={alert.testTabAlert} />
+        <PushAlertsNotice push={push} />
 
         <span role="status" className="sr-only">
           {syncStale ? t.reconnectingNotice : ""}
@@ -274,6 +278,13 @@ export function StaffView({
         lastAlertSeq={alert.lastAlertSeq}
         onToggleMute={alert.toggleMute}
         onDismiss={alert.dismissAlert}
+        onAcknowledge={(seq) => {
+          void acknowledgeAlert(sessionId, seq, {
+            staffToken: staffIdentity.staffToken,
+          })
+            .then((res) => onMutationSnapshot(res.snapshot))
+            .catch(() => {});
+        }}
         hideMuteControl
       />
 

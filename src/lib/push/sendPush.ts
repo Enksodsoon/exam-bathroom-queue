@@ -1,5 +1,5 @@
 import { sendNotification, setVapidDetails } from "web-push";
-import type { ExamSession } from "@/lib/domain/types";
+import type { ExamSession, PushSubscriptionRecord } from "@/lib/domain/types";
 import { prunePushSubscriptions } from "@/lib/domain/queue";
 import { getSessionStore } from "@/lib/storage";
 
@@ -79,5 +79,48 @@ export async function sendNextStudentPushNotifications(
     } catch {
       // Best-effort cleanup
     }
+  }
+}
+
+export async function sendTestPushNotification(
+  sessionId: string,
+  sub: PushSubscriptionRecord,
+): Promise<{ sent: boolean; reason?: string }> {
+  if (!ensureVapidConfigured()) {
+    return { sent: false, reason: "VAPID keys not configured on server." };
+  }
+
+  const payload = JSON.stringify({
+    title: "ExamQ · Lock-screen test",
+    body: "Quiet alert check — tap to return to ExamQ.",
+    tag: `examq-test-${sessionId}`,
+    url: `/s/${encodeURIComponent(sessionId)}`,
+  });
+
+  try {
+    await sendNotification(
+      {
+        endpoint: sub.endpoint,
+        keys: sub.keys,
+      },
+      payload,
+      { TTL: 60 },
+    );
+    return { sent: true };
+  } catch (err) {
+    const statusCode =
+      typeof err === "object" && err !== null && "statusCode" in err
+        ? (err as { statusCode?: number }).statusCode
+        : undefined;
+    if (statusCode === 404 || statusCode === 410) {
+      await getSessionStore()
+        .mutate(sessionId, (current) => ({
+          session: prunePushSubscriptions(current, [sub.endpoint]),
+          result: null,
+        }))
+        .catch(() => {});
+      return { sent: false, reason: "Push subscription expired." };
+    }
+    return { sent: false, reason: "Push delivery failed." };
   }
 }

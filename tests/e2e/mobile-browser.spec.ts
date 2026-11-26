@@ -53,14 +53,14 @@ test("a staff QR camera frame opens check-in; a plain browser receives the live 
     expect(await staff.evaluate(() => sessionStorage.getItem("synthetic-camera-stopped"))).toBe("yes");
     await staff.locator("#staff-label-input").fill("Synthetic Proctor");
     await staff.getByRole("button", { name: "Join Session" }).click();
-    await expect(staff.getByText("Live in this tab")).toBeVisible();
-    await staff.getByRole("button", { name: "Test in-tab alert" }).click();
-    await expect(staff.getByRole("status").filter({ hasText: "Test alert." })).toBeVisible();
+    await expect(staff.getByTestId("push-pilot-status")).toContainText(/Not enabled|Unavailable/);
     await page.getByRole("button", { name: "Male",exact: true }).click();
     await page.locator("#controller-student-number").fill("SYN-NEXT");
     await page.getByRole("button", { name: "Add Student" }).click();
     await expect(staff.getByTestId("next-student-alert")).toContainText("SYN-NEXT");
-    await expect(staff.getByTestId("alert-telemetry")).toHaveAttribute("data-audio-alert-count", "1");
+    await expect(staff.getByTestId("alert-telemetry")).toHaveAttribute("data-audio-alert-count", "0");
+    await staff.getByTestId("alert-acknowledge-button").click();
+    await expect(staff.getByTestId("alert-covered-by")).toContainText("Covered by Synthetic Proctor");
   } finally {
     await staffCtx.close();
   }

@@ -344,3 +344,22 @@ export function rotateInvite(
     },
   );
 }
+
+export function acknowledgeAlert(
+  sessionId: string,
+  seq: number,
+  auth: RequestAuth,
+): Promise<SnapshotResponse> {
+  const encodedId = encodeURIComponent(sessionId);
+  const headers: Record<string, string> = {};
+  if (auth.controllerKey) {
+    headers["x-controller-key"] = auth.controllerKey;
+  } else if (auth.staffToken) {
+    headers["x-staff-token"] = auth.staffToken;
+  }
+  return requestJson<SnapshotResponse>(`/api/sessions/${encodedId}/ack`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ seq }),
+  });
+}

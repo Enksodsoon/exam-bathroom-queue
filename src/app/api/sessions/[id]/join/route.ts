@@ -25,9 +25,9 @@ export async function POST(
     const store = getSessionStore();
     const { session, result } = await store.mutate(id, (current) => {
       if (
-        providedInvite.length > 0 &&
         current.inviteCode &&
-        !isControllerKeyValid(current.inviteCode, providedInvite)
+        (!providedInvite ||
+          !isControllerKeyValid(current.inviteCode, providedInvite))
       ) {
         throw new ApiHttpError(
           403,

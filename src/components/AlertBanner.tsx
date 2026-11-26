@@ -2,7 +2,7 @@
 
 import type { AlertInfo } from "@/lib/domain/types";
 import { useAppPreferences } from "./AppPreferencesProvider";
-import { BellIcon, BellOffIcon, CloseIcon } from "./Icons";
+import { BellIcon, BellOffIcon, CheckReturnIcon, CloseIcon } from "./Icons";
 
 interface AlertBannerProps {
   activeAlert: AlertInfo | null;
@@ -12,6 +12,7 @@ interface AlertBannerProps {
   lastAlertSeq: number;
   onToggleMute: () => void;
   onDismiss: () => void;
+  onAcknowledge?: (seq: number) => void;
   hideMuteControl?: boolean;
 }
 
@@ -23,6 +24,7 @@ export function AlertBanner({
   lastAlertSeq,
   onToggleMute,
   onDismiss,
+  onAcknowledge,
   hideMuteControl = false,
 }: AlertBannerProps) {
   const { t } = useAppPreferences();
@@ -90,16 +92,37 @@ export function AlertBanner({
               <p className="min-w-0 max-w-full font-mono text-base font-bold break-words [overflow-wrap:anywhere] tabular-nums">
                 #{activeAlert.studentNumber}
               </p>
+              {activeAlert.acknowledgedBy && (
+                <p
+                  data-testid="alert-covered-by"
+                  className="text-xs font-medium text-emerald-800 dark:text-emerald-200"
+                >
+                  {t.coveredBy} {activeAlert.acknowledgedBy.label}
+                </p>
+              )}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onDismiss}
-            aria-label="Dismiss"
-            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-emerald-800 shadow-2xs transition hover:bg-emerald-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none dark:bg-emerald-900 dark:text-emerald-100 dark:hover:bg-emerald-800"
-          >
-            <CloseIcon className="h-4 w-4" />
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            {onAcknowledge && !activeAlert.acknowledgedBy && (
+              <button
+                type="button"
+                data-testid="alert-acknowledge-button"
+                onClick={() => onAcknowledge(activeAlert.seq)}
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-emerald-700 px-3.5 text-xs font-semibold text-white transition hover:bg-emerald-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              >
+                <CheckReturnIcon className="h-3.5 w-3.5" />
+                <span>{t.acknowledge}</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onDismiss}
+              aria-label="Dismiss"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-emerald-800 shadow-2xs transition hover:bg-emerald-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none dark:bg-emerald-900 dark:text-emerald-100 dark:hover:bg-emerald-800"
+            >
+              <CloseIcon className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       )}
     </div>

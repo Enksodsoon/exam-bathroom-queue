@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import { sessionInviteMap } from './apiClient';
 import type { Sex } from './contracts';
 import { Selectors } from './selectors';
 
@@ -38,6 +39,18 @@ export class HomePage {
         return '';
       }, sessionId));
     expect(sessionId.length).toBeGreaterThan(0);
+    if (controllerKey) {
+      const res = await this.page.request.get(
+        `/api/sessions/${encodeURIComponent(sessionId)}`,
+        { headers: { 'x-controller-key': controllerKey } },
+      );
+      if (res.ok()) {
+        const body = (await res.json()) as { snapshot?: { inviteCode?: string } };
+        if (body.snapshot?.inviteCode) {
+          sessionInviteMap.set(sessionId, body.snapshot.inviteCode);
+        }
+      }
+    }
     return {
       sessionId,
       controllerKey,
@@ -46,7 +59,11 @@ export class HomePage {
   }
 
   async joinByCode(codeOrUrl: string): Promise<void> {
-    await Selectors.joinCodeInput(this.page).fill(codeOrUrl);
+    const invite = sessionInviteMap.get(codeOrUrl.trim());
+    const target = invite
+      ? `/s/${encodeURIComponent(codeOrUrl.trim())}?invite=${encodeURIComponent(invite)}`
+      : codeOrUrl;
+    await Selectors.joinCodeInput(this.page).fill(target);
     await Selectors.joinSessionByCodeButton(this.page).click();
     await this.page.waitForURL(/\/s\/[A-Za-z0-9_-]+/);
   }
@@ -261,7 +278,16 @@ export class StaffPage {
   constructor(readonly page: Page) {}
 
   async goto(joinUrl: string): Promise<void> {
-    await this.page.goto(joinUrl);
+    let target = joinUrl;
+    if (!target.includes('invite=')) {
+      const m = target.match(/\/s\/([^/?#]+)/);
+      const invite = m?.[1] ? sessionInviteMap.get(decodeURIComponent(m[1])) : undefined;
+      if (invite) {
+        const sep = target.includes('?') ? '&' : '?';
+        target = `${target}${sep}invite=${encodeURIComponent(invite)}`;
+      }
+    }
+    await this.page.goto(target);
   }
 
   async join(label: string): Promise<void> {

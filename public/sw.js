@@ -35,7 +35,7 @@ self.addEventListener("push", (event) => {
       tag: payload.tag,
       icon: "/icons/icon-192.png",
       badge: "/icons/icon-192.png",
-      vibrate: [200, 100, 200],
+      silent: true,
       renotify: true,
       requireInteraction: false,
       data: { url: payload.url },

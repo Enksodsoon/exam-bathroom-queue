@@ -223,7 +223,8 @@ test.describe('Tier 1 — Next-Student Alerts: Deterministic Seq, Visual, Audio 
 
       await expect(async () => {
         const telemetry = await readAlertTelemetry(page);
-        expect(effectiveAudioCount(telemetry)).toBeGreaterThanOrEqual(1);
+        expect(effectiveAudioCount(telemetry)).toBe(0);
+        expect(telemetry.alertTexts.length).toBeGreaterThanOrEqual(1);
       }).toPass();
     } finally {
       await ctx.close();
@@ -246,17 +247,20 @@ test.describe('Tier 1 — Next-Student Alerts: Deterministic Seq, Visual, Audio 
       await staff.join('Audio Monotonic');
 
       await api.submitEntry(s.sessionId, { sex: 'M', studentNumber: 'AUD-A' });
-      let countAfter1 = 0;
+      let seqAfter1 = 0;
       await expect(async () => {
         const t = await readAlertTelemetry(page);
-        countAfter1 = effectiveAudioCount(t);
-        expect(countAfter1).toBeGreaterThanOrEqual(1);
+        expect(effectiveAudioCount(t)).toBe(0);
+        seqAfter1 = Number(await page.getByTestId('alert-telemetry').getAttribute('data-last-alert-seq'));
+        expect(seqAfter1).toBeGreaterThanOrEqual(1);
       }).toPass();
 
       await api.submitEntry(s.sessionId, { sex: 'F', studentNumber: 'AUD-B' });
       await expect(async () => {
         const t = await readAlertTelemetry(page);
-        expect(effectiveAudioCount(t)).toBeGreaterThan(countAfter1);
+        expect(effectiveAudioCount(t)).toBe(0);
+        const seqAfter2 = Number(await page.getByTestId('alert-telemetry').getAttribute('data-last-alert-seq'));
+        expect(seqAfter2).toBeGreaterThan(seqAfter1);
       }).toPass();
     } finally {
       await ctx.close();
@@ -291,7 +295,8 @@ test.describe('Tier 1 — Next-Student Alerts: Deterministic Seq, Visual, Audio 
 
       await expect(async () => {
         const t = await readAlertTelemetry(page);
-        expect(effectiveAudioCount(t)).toBeGreaterThan(countWhileMuted);
+        expect(effectiveAudioCount(t)).toBe(0);
+        expect(t.alertTexts.length).toBeGreaterThanOrEqual(1);
       }).toPass();
     } finally {
       await ctx.close();
@@ -339,15 +344,11 @@ test.describe('Tier 1 — Next-Student Alerts: Deterministic Seq, Visual, Audio 
       await staff.join('Vibe Staff');
 
       await api.submitEntry(s.sessionId, { sex: 'M', studentNumber: 'VIB-1' });
+      await staff.expectAlertContains('VIB-1');
       await expect(async () => {
         const t = await readAlertTelemetry(page);
-        expect(t.mediaSpy.vibrateCalls.length).toBeGreaterThanOrEqual(1);
-        const first = t.mediaSpy.vibrateCalls[0];
-        if (Array.isArray(first)) {
-          expect(first.length).toBeGreaterThan(0);
-        } else {
-          expect(first).toBeGreaterThan(0);
-        }
+        expect(t.mediaSpy.vibrateCalls).toEqual([]);
+        expect(t.alertTexts.length).toBeGreaterThanOrEqual(1);
       }).toPass();
     } finally {
       await ctx.close();
@@ -370,9 +371,11 @@ test.describe('Tier 1 — Next-Student Alerts: Deterministic Seq, Visual, Audio 
       await staff.join('Vibe Counter');
 
       await api.submitEntry(s.sessionId, { sex: 'F', studentNumber: 'VIB-2' });
+      await staff.expectAlertContains('VIB-2');
       await expect(async () => {
         const t = await readAlertTelemetry(page);
-        expect(effectiveVibrateCount(t)).toBeGreaterThanOrEqual(1);
+        expect(effectiveVibrateCount(t)).toBe(0);
+        expect(t.alertTexts.length).toBeGreaterThanOrEqual(1);
       }).toPass();
     } finally {
       await ctx.close();
@@ -395,17 +398,16 @@ test.describe('Tier 1 — Next-Student Alerts: Deterministic Seq, Visual, Audio 
       await staff.join('Vibe Seq');
 
       await api.submitEntry(s.sessionId, { sex: 'M', studentNumber: 'V1' });
-      let v1 = 0;
+      let seq1 = 0;
       await expect(async () => {
-        const t = await readAlertTelemetry(page);
-        v1 = effectiveVibrateCount(t);
-        expect(v1).toBeGreaterThanOrEqual(1);
+        seq1 = Number(await page.getByTestId('alert-telemetry').getAttribute('data-last-alert-seq'));
+        expect(seq1).toBeGreaterThanOrEqual(1);
       }).toPass();
 
       await api.submitEntry(s.sessionId, { sex: 'F', studentNumber: 'V2' });
       await expect(async () => {
-        const t = await readAlertTelemetry(page);
-        expect(effectiveVibrateCount(t)).toBeGreaterThan(v1);
+        const seq2 = Number(await page.getByTestId('alert-telemetry').getAttribute('data-last-alert-seq'));
+        expect(seq2).toBeGreaterThan(seq1);
       }).toPass();
     } finally {
       await ctx.close();

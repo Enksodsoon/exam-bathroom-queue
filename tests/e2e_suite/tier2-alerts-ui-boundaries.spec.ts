@@ -112,8 +112,9 @@ test.describe('Tier 2 — Alerts & Cross-Device UI Boundaries (F-A1..F-A4, F-D1)
 
       await expect(async () => {
         const t = await readAlertTelemetry(page);
-        expect(effectiveAudioCount(t)).toBeGreaterThanOrEqual(1);
+        expect(effectiveAudioCount(t)).toBe(0);
         expect(t.mediaSpy.vibrateCalls).toEqual([]);
+        expect(t.alertTexts.length).toBeGreaterThanOrEqual(1);
       }).toPass();
       errors.assertZeroErrors();
     } finally {

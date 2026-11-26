@@ -80,7 +80,19 @@ function cloneNextBySex(nextBySex: NextBySex): NextBySex {
 }
 
 function cloneAlert(alert: AlertInfo | null): AlertInfo | null {
-  return alert ? { ...alert } : null;
+  if (!alert) {
+    return null;
+  }
+  return {
+    ...alert,
+    ...(alert.acknowledgedBy !== undefined
+      ? {
+          acknowledgedBy: alert.acknowledgedBy
+            ? { ...alert.acknowledgedBy }
+            : null,
+        }
+      : {}),
+  };
 }
 
 function cloneSession(session: ExamSession): ExamSession {
@@ -263,11 +275,53 @@ export function rotateInvite(
   assertFiniteNow(nowMs);
   const gen = options?.idGenerator ?? defaultIdGenerator;
   const inviteCode = assertNonEmptyId(gen(), "inviteCode");
+  const cloned = cloneSession(session);
+  const retainedSubs = (cloned.pushSubscriptions ?? []).filter(
+    (sub) => !sub.actorKey.startsWith("staff:"),
+  );
 
   return {
-    ...cloneSession(session),
+    ...cloned,
     inviteCode,
     inviteVersion: (session.inviteVersion ?? 1) + 1,
+    staffTokens: {},
+    ...(cloned.pushSubscriptions !== undefined
+      ? { pushSubscriptions: retainedSubs }
+      : {}),
+    version: session.version + 1,
+  };
+}
+
+export function acknowledgeAlert(
+  session: ExamSession,
+  input: {
+    actorKey: string;
+    label: string;
+    seq: number;
+  },
+  nowMs: number = Date.now(),
+): ExamSession {
+  assertFiniteNow(nowMs);
+  const currentAlert = session.lastNextAlert;
+  if (
+    !currentAlert ||
+    currentAlert.seq !== input.seq ||
+    currentAlert.acknowledgedBy
+  ) {
+    return session;
+  }
+
+  const cloned = cloneSession(session);
+  return {
+    ...cloned,
+    lastNextAlert: {
+      ...currentAlert,
+      acknowledgedBy: {
+        actorKey: input.actorKey,
+        label: input.label,
+        at: nowMs,
+      },
+    },
     version: session.version + 1,
   };
 }

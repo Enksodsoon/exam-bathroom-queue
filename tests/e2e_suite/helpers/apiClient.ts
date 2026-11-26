@@ -38,11 +38,14 @@ async function parseResponse<T>(res: APIResponse): Promise<ApiCallResult<T>> {
   };
 }
 
+export const sessionInviteMap = new Map<string, string>();
+
 export class ExamQApiClient {
   private readonly authBySession = new Map<
     string,
     { controllerKey?: string; staffToken?: string }
   >();
+  private readonly inviteBySession = new Map<string, string>();
 
   constructor(private readonly request: APIRequestContext) {}
 
@@ -69,6 +72,11 @@ export class ExamQApiClient {
       this.authBySession.set(parsed.body.sessionId, {
         controllerKey: parsed.body.controllerKey,
       });
+      const snapInvite = (parsed.body.snapshot as { inviteCode?: string } | undefined)?.inviteCode;
+      if (snapInvite) {
+        this.inviteBySession.set(parsed.body.sessionId, snapInvite);
+        sessionInviteMap.set(parsed.body.sessionId, snapInvite);
+      }
     }
     return parsed;
   }
@@ -102,15 +110,24 @@ export class ExamQApiClient {
 
   async joinStaff(
     sessionId: string,
-    payload: { label: unknown } | string,
+    payload: { label: unknown; inviteCode?: string } | string,
   ): Promise<ApiCallResult<JoinSessionResponse & ApiErrorBody>> {
-    const opts: Parameters<APIRequestContext['post']>[1] =
+    const savedInvite = this.inviteBySession.get(sessionId);
+    const data =
       typeof payload === 'string'
+        ? payload
+        : payload.inviteCode !== undefined
+          ? payload
+          : savedInvite
+            ? { ...payload, inviteCode: savedInvite }
+            : payload;
+    const opts: Parameters<APIRequestContext['post']>[1] =
+      typeof data === 'string'
         ? {
-            data: payload,
+            data,
             headers: { 'content-type': 'application/json' },
           }
-        : { data: payload };
+        : { data };
     const res = await this.request.post(
       `/api/sessions/${encodeURIComponent(sessionId)}/join`,
       opts,
