@@ -15,6 +15,7 @@ import {
   evaluateAlertSnapshot,
   type AlertTrackerState,
 } from "@/lib/client/useNextStudentAlert";
+import { createSerialMutationQueue } from "@/lib/client/mutationQueue";
 
 const MIN = 60_000;
 const BASE_START = 1_700_000_000_000;
@@ -375,6 +376,45 @@ describe("Client Sync & Alert Transitions", () => {
       );
       expect(res.type).toBe("reset");
       expect(res.nextTracker.seenAlertSeq).toBe(4);
+    });
+  });
+
+  describe("createSerialMutationQueue", () => {
+    it("executes enqueued mutations strictly sequentially in FIFO order even when earlier tasks are slower or reject", async () => {
+      const enqueue = createSerialMutationQueue();
+      const events: string[] = [];
+
+      const p1 = enqueue(async () => {
+        events.push("start:1");
+        await new Promise((r) => setTimeout(r, 25));
+        events.push("end:1");
+        return "one";
+      });
+
+      const p2 = enqueue(async () => {
+        events.push("start:2");
+        await new Promise((r) => setTimeout(r, 5));
+        events.push("end:2");
+        throw new Error("boom");
+      });
+
+      const p3 = enqueue(async () => {
+        events.push("start:3");
+        events.push("end:3");
+        return "three";
+      });
+
+      await expect(p1).resolves.toBe("one");
+      await expect(p2).rejects.toThrow("boom");
+      await expect(p3).resolves.toBe("three");
+      expect(events).toEqual([
+        "start:1",
+        "end:1",
+        "start:2",
+        "end:2",
+        "start:3",
+        "end:3",
+      ]);
     });
   });
 });

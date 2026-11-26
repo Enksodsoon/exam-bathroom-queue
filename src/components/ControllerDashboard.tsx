@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { EntryAction, SessionSnapshot, Sex } from "@/lib/domain/types";
 import {
   ApiClientError,
@@ -10,6 +10,10 @@ import {
   submitEntry,
   updateConfig,
 } from "@/lib/client/api";
+import {
+  createSerialMutationQueue,
+  type EnqueueMutation,
+} from "@/lib/client/mutationQueue";
 import {
   describeWindowStatus,
   formatTimeOnly,
@@ -84,6 +88,22 @@ export function ControllerDashboard({
     tone: "error" | "success";
     text: string;
   } | null>(null);
+
+  const mutationQueueRef = useRef<EnqueueMutation | null>(null);
+  const latestClearedSeqRef = useRef<number>(snapshot?.clearedSeq ?? 0);
+
+  useEffect(() => {
+    if (snapshot) {
+      latestClearedSeqRef.current = snapshot.clearedSeq;
+    }
+  }, [snapshot]);
+
+  const enqueueMutation: EnqueueMutation = (task) => {
+    if (!mutationQueueRef.current) {
+      mutationQueueRef.current = createSerialMutationQueue();
+    }
+    return mutationQueueRef.current(task);
+  };
 
   if (!snapshot) {
     return (
@@ -194,21 +214,23 @@ export function ControllerDashboard({
     setConfigMessageState(null);
 
     try {
-      const res = await updateConfig(sessionId, controllerKey, {
-        startTimeMs: startMs,
-        durationMinutes: duration,
-        clockOffsetMs: Math.round(offsetMins * 60_000),
-      });
-      onMutationSnapshot(res.snapshot);
-      setConfigDraft(null);
-      setConfigMessageState({
-        clearedSeq: res.snapshot.clearedSeq,
-        tone: "success",
-        text: "Exam configuration saved.",
+      await enqueueMutation(async () => {
+        const res = await updateConfig(sessionId, controllerKey, {
+          startTimeMs: startMs,
+          durationMinutes: duration,
+          clockOffsetMs: Math.round(offsetMins * 60_000),
+        });
+        onMutationSnapshot(res.snapshot);
+        setConfigDraft(null);
+        setConfigMessageState({
+          clearedSeq: res.snapshot.clearedSeq,
+          tone: "success",
+          text: "Exam configuration saved.",
+        });
       });
     } catch (err) {
       setConfigMessageState({
-        clearedSeq: currentClearedSeq,
+        clearedSeq: latestClearedSeqRef.current,
         tone: "error",
         text:
           err instanceof ApiClientError
@@ -236,32 +258,37 @@ export function ControllerDashboard({
       return;
     }
 
+    const sexToSubmit = addSex;
+    const useOverride = overrideEnabled;
+
     submittingStudentRef.current = true;
     setSubmittingStudent(true);
     setStudentMessageState(null);
     setQueueErrorState(null);
 
     try {
-      const res = await submitEntry(
-        sessionId,
-        {
-          sex: addSex,
-          studentNumber: trimmed,
-          submittedBy: "Controller",
-          ...(overrideEnabled ? { override: true } : {}),
-        },
-        overrideEnabled ? controllerKey : undefined,
-      );
-      onMutationSnapshot(res.snapshot);
-      setAddStudentNumber("");
-      setStudentMessageState({
-        clearedSeq: res.snapshot.clearedSeq,
-        tone: "success",
-        text: `Added ${addSex === "M" ? "Male" : "Female"} #${res.entry.studentNumber}${res.entry.override ? " (Override)" : ""}.`,
+      await enqueueMutation(async () => {
+        const res = await submitEntry(
+          sessionId,
+          {
+            sex: sexToSubmit,
+            studentNumber: trimmed,
+            submittedBy: "Controller",
+            ...(useOverride ? { override: true } : {}),
+          },
+          useOverride ? controllerKey : undefined,
+        );
+        onMutationSnapshot(res.snapshot);
+        setAddStudentNumber("");
+        setStudentMessageState({
+          clearedSeq: res.snapshot.clearedSeq,
+          tone: "success",
+          text: `Added ${sexToSubmit === "M" ? "Male" : "Female"} #${res.entry.studentNumber}${res.entry.override ? " (Override)" : ""}.`,
+        });
       });
     } catch (err) {
       setStudentMessageState({
-        clearedSeq: currentClearedSeq,
+        clearedSeq: latestClearedSeqRef.current,
         tone: "error",
         text:
           err instanceof ApiClientError
@@ -278,21 +305,24 @@ export function ControllerDashboard({
     if (busyEntryIdsRef.current.has(entryId)) {
       return;
     }
+    const useOverride = action === "enter" && overrideEnabled;
     busyEntryIdsRef.current.add(entryId);
     setBusyEntryIds(new Set(busyEntryIdsRef.current));
     setQueueErrorState(null);
     try {
-      const res = await applyEntryAction(
-        sessionId,
-        controllerKey,
-        entryId,
-        action,
-        action === "enter" && overrideEnabled ? { override: true } : undefined,
-      );
-      onMutationSnapshot(res.snapshot);
+      await enqueueMutation(async () => {
+        const res = await applyEntryAction(
+          sessionId,
+          controllerKey,
+          entryId,
+          action,
+          useOverride ? { override: true } : undefined,
+        );
+        onMutationSnapshot(res.snapshot);
+      });
     } catch (err) {
       setQueueErrorState({
-        clearedSeq: currentClearedSeq,
+        clearedSeq: latestClearedSeqRef.current,
         text:
           err instanceof ApiClientError
             ? err.message
@@ -312,14 +342,16 @@ export function ControllerDashboard({
     setBusyEntryIds(new Set(busyEntryIdsRef.current));
     setQueueErrorState(null);
     try {
-      const res = await reorderEntry(sessionId, controllerKey, {
-        entryId,
-        direction,
+      await enqueueMutation(async () => {
+        const res = await reorderEntry(sessionId, controllerKey, {
+          entryId,
+          direction,
+        });
+        onMutationSnapshot(res.snapshot);
       });
-      onMutationSnapshot(res.snapshot);
     } catch (err) {
       setQueueErrorState({
-        clearedSeq: currentClearedSeq,
+        clearedSeq: latestClearedSeqRef.current,
         text:
           err instanceof ApiClientError
             ? err.message
@@ -340,12 +372,14 @@ export function ControllerDashboard({
     setClearMessage(null);
     setQueueErrorState(null);
     try {
-      const res = await clearSession(sessionId, controllerKey);
-      onMutationSnapshot(res.snapshot);
-      setConfirmingClear(false);
-      setClearMessage({
-        tone: "success",
-        text: "Session cleared across all connected clients.",
+      await enqueueMutation(async () => {
+        const res = await clearSession(sessionId, controllerKey);
+        onMutationSnapshot(res.snapshot);
+        setConfirmingClear(false);
+        setClearMessage({
+          tone: "success",
+          text: "Session cleared across all connected clients.",
+        });
       });
     } catch (err) {
       setClearMessage({
