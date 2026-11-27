@@ -93,3 +93,9 @@ PLAYWRIGHT_BASE_URL="https://<your-app>.vercel.app" npx playwright test -c playw
    curl https://<your-app>.vercel.app/api/health
    # Expected: {"ok":true,"storage":"upstash-redis"}
    ```
+
+## Author & Credentials
+
+- **Piyakawin Sodsoon** (**ปิยกวิน สดสุ่น**) — *Creator & Developer* (*ผู้พัฒนาและออกแบบระบบ*)
+- GitHub: [https://github.com/Enksodsoon](https://github.com/Enksodsoon)
+- `© 2026 Piyakawin Sodsoon`

@@ -2,6 +2,15 @@
   "name": "exam-bathroom-queue",
   "version": "0.1.0",
   "private": true,
+  "author": {
+    "name": "Piyakawin Sodsoon",
+    "url": "https://github.com/Enksodsoon"
+  },
+  "homepage": "https://exam-bathroom-queue.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Enksodsoon/exam-bathroom-queue.git"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",

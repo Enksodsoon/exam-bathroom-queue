@@ -93,6 +93,9 @@ export interface Translations {
   wakeLockOff: string;
   acknowledge: string;
   coveredBy: string;
+  authorName: string;
+  authorRole: string;
+  copyrightNotice: string;
 
   // Controller Dashboard
   timerButton: string;
@@ -258,6 +261,9 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     wakeLockOff: "Keep Awake",
     acknowledge: "Acknowledge",
     coveredBy: "Covered by",
+    authorName: "Piyakawin Sodsoon",
+    authorRole: "Creator & Developer",
+    copyrightNotice: "© 2026 Piyakawin Sodsoon",
 
     timerButton: "Timer",
     timerAria: "Exam Timer Settings",
@@ -417,6 +423,9 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     wakeLockOff: "กันจอดับ",
     acknowledge: "รับทราบ",
     coveredBy: "รับเรื่องโดย",
+    authorName: "ปิยกวิน สดสุ่น",
+    authorRole: "ผู้พัฒนาและออกแบบระบบ",
+    copyrightNotice: "© 2026 ปิยกวิน สดสุ่น",
 
     timerButton: "เวลา",
     timerAria: "ตั้งค่าเวลาสอบ",

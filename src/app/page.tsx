@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ApiClientError, createSession } from "@/lib/client/api";
 import { saveControllerKey } from "@/lib/client/storage";
 import { useAppPreferences } from "@/components/AppPreferencesProvider";
+import { AuthorFooter } from "@/components/AuthorFooter";
 import { HomeQrScanner } from "@/components/HomeQrScanner";
 import { resolveExamJoinPath } from "@/lib/client/joinLink";
 import { ArrowRightIcon, PlusIcon, QrIcon } from "@/components/Icons";
@@ -179,6 +180,7 @@ export default function HomePage() {
           </form>
         </section>
       </div>
+      <AuthorFooter />
     </main>
   );
 }

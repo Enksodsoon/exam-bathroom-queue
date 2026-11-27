@@ -30,6 +30,8 @@ const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem('examq_the
 export const metadata: Metadata = {
   title: "ExamQ · Bathroom Queue",
   description: "Minimal live exam bathroom queue coordination.",
+  authors: [{ name: "Piyakawin Sodsoon", url: "https://github.com/Enksodsoon" }],
+  creator: "Piyakawin Sodsoon",
   appleWebApp: {
     capable: true,
     title: "ExamQ",

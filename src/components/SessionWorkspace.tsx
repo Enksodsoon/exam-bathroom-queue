@@ -13,6 +13,7 @@ import {
 import { useNextStudentAlert } from "@/lib/client/useNextStudentAlert";
 import { useSessionSync } from "@/lib/client/useSessionSync";
 import { useAppPreferences } from "./AppPreferencesProvider";
+import { AuthorFooter } from "./AuthorFooter";
 import { ControllerDashboard } from "./ControllerDashboard";
 import { StaffJoinForm } from "./StaffJoinForm";
 import { StaffView } from "./StaffView";
@@ -172,6 +173,7 @@ export function SessionWorkspace({
           }}
         />
       )}
+      <AuthorFooter />
     </main>
   );
 }

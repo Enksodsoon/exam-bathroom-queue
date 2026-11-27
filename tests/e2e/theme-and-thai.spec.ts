@@ -8,6 +8,9 @@ test("light/dark mode and Thai/English language toggle persist across Home, Cont
 
   // Default English
   await expect(page.getByRole("heading", { name: "Bathroom Queue" })).toBeVisible();
+  await expect(page.getByTestId("author-footer")).toContainText(
+    "© 2026 Piyakawin Sodsoon · Creator & Developer",
+  );
 
   // Toggle to Dark mode
   await page.getByTestId("theme-toggle").click();
@@ -17,6 +20,9 @@ test("light/dark mode and Thai/English language toggle persist across Home, Cont
   await page.getByTestId("locale-toggle").click();
   await expect(page.locator("html")).toHaveAttribute("lang", "th");
   await expect(page.getByRole("heading", { name: "คิวเข้าห้องน้ำห้องสอบ" })).toBeVisible();
+  await expect(page.getByTestId("author-footer")).toContainText(
+    "© 2026 ปิยกวิน สดสุ่น · ผู้พัฒนาและออกแบบระบบ",
+  );
 
   // Reload and verify persistence
   await page.reload();
