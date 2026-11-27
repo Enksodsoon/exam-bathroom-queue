@@ -1,10 +1,12 @@
 "use client";
 
 import { useRef, useState, type FormEvent } from "react";
-import type { SessionSnapshot, Sex } from "@/lib/domain/types";
+import type { EntryAction, SessionSnapshot, Sex } from "@/lib/domain/types";
 import {
   ApiClientError,
   acknowledgeAlert,
+  applyEntryAction,
+  postUndo,
   submitEntry,
 } from "@/lib/client/api";
 import type { StoredStaffIdentity } from "@/lib/client/storage";
@@ -17,6 +19,7 @@ import type { UseNextStudentAlertResult } from "@/lib/client/useNextStudentAlert
 import { usePushNotifications } from "@/lib/client/usePushNotifications";
 import { AlertBanner } from "./AlertBanner";
 import { useAppPreferences } from "./AppPreferencesProvider";
+import { DualQueueSummaryStrip } from "./DualQueueSummaryStrip";
 import { ExamTimelineBar } from "./ExamTimelineBar";
 import {
   ArrowRightIcon,
@@ -63,6 +66,8 @@ export function StaffView({
   const [studentNumber, setStudentNumber] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
+  const [busyEntryIds, setBusyEntryIds] = useState<Set<string>>(() => new Set());
+  const busyEntryIdsRef = useRef<Set<string>>(new Set());
   const [submitErrorState, setSubmitErrorState] = useState<{
     clearedSeq: number;
     text: string;
@@ -172,6 +177,61 @@ export function StaffView({
     }
   };
 
+  const handleEntryAction = async (entryId: string, action: EntryAction) => {
+    if (!staffIdentity.staffToken || busyEntryIdsRef.current.has(entryId)) {
+      return;
+    }
+    busyEntryIdsRef.current.add(entryId);
+    setBusyEntryIds(new Set(busyEntryIdsRef.current));
+    setSubmitErrorState(null);
+    try {
+      const res = await applyEntryAction(
+        sessionId,
+        { staffToken: staffIdentity.staffToken },
+        entryId,
+        action,
+      );
+      onMutationSnapshot(res.snapshot);
+    } catch (err) {
+      setSubmitErrorState({
+        clearedSeq: snapshot?.clearedSeq ?? 0,
+        text:
+          err instanceof ApiClientError
+            ? err.message
+            : `Failed to ${action} entry.`,
+      });
+    } finally {
+      busyEntryIdsRef.current.delete(entryId);
+      setBusyEntryIds(new Set(busyEntryIdsRef.current));
+    }
+  };
+
+  const staffActorKey = `staff:${staffIdentity.staffId}`;
+  const hasStaffUndo = Boolean(
+    snapshot?.undoStack?.some(
+      (u) =>
+        u.actorKey === staffActorKey &&
+        (u.action === "enter" || u.action === "return"),
+    ),
+  );
+
+  const handleUndo = async () => {
+    if (!staffIdentity.staffToken) return;
+    setSubmitErrorState(null);
+    try {
+      const res = await postUndo(sessionId, {
+        staffToken: staffIdentity.staffToken,
+      });
+      onMutationSnapshot(res.snapshot);
+    } catch (err) {
+      setSubmitErrorState({
+        clearedSeq: snapshot?.clearedSeq ?? 0,
+        text:
+          err instanceof ApiClientError ? err.message : "Failed to undo.",
+      });
+    }
+  };
+
   return (
     <div className="space-y-5">
       {/* Slim Staff Top Bar */}
@@ -225,6 +285,20 @@ export function StaffView({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {hasStaffUndo && (
+              <button
+                type="button"
+                data-testid="undo-button"
+                onClick={() => {
+                  void handleUndo();
+                }}
+                aria-label={t.undoAria}
+                title={t.undoAria}
+                className="inline-flex h-11 items-center gap-1.5 rounded-full bg-slate-100 px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-200 focus:ring-2 focus:ring-slate-400 focus:outline-none dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                <span>{t.undoBtn}</span>
+              </button>
+            )}
             <PushAlertsButton push={push} />
 
             <button
@@ -416,19 +490,41 @@ export function StaffView({
         </form>
       </section>
 
-      {/* Live Read-Only Queues */}
+      {/* Simultaneous Male & Female Summary Strip */}
+      <DualQueueSummaryStrip
+        entries={snapshot.entries}
+        nextBySex={snapshot.nextBySex}
+      />
+
+      {/* Live Queues (Staff can mark Enter / Returned, not reorder/remove) */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <QueueColumn
           sex="M"
           entries={snapshot.entries}
           mode="staff"
           nextEntryId={snapshot.nextBySex.M}
+          busyEntryIds={busyEntryIds}
+          onEntryAction={
+            staffIdentity.staffToken
+              ? (entryId, action) => {
+                  void handleEntryAction(entryId, action);
+                }
+              : undefined
+          }
         />
         <QueueColumn
           sex="F"
           entries={snapshot.entries}
           mode="staff"
           nextEntryId={snapshot.nextBySex.F}
+          busyEntryIds={busyEntryIds}
+          onEntryAction={
+            staffIdentity.staffToken
+              ? (entryId, action) => {
+                  void handleEntryAction(entryId, action);
+                }
+              : undefined
+          }
         />
       </div>
     </div>

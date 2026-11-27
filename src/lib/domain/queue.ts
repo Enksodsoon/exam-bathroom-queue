@@ -12,6 +12,7 @@ import {
   type SessionSnapshot,
   type StaffMember,
   type SubmitStudentInput,
+  type UndoRecord,
 } from "./types";
 import {
   evaluateExamWindow,
@@ -23,6 +24,7 @@ const MAX_STAFF_LABEL_LENGTH = 40;
 const MAX_STUDENT_NUMBER_LENGTH = 32;
 const MAX_ENTRIES_PER_SESSION = 500;
 const MAX_STAFF_PER_SESSION = 50;
+const MAX_UNDO_HISTORY = 10;
 const MAX_PUSH_SUBSCRIPTIONS = 50;
 
 function defaultIdGenerator(): string {
@@ -125,6 +127,9 @@ function cloneSession(session: ExamSession): ExamSession {
     staff: session.staff.map(cloneStaff),
     nextBySex: cloneNextBySex(session.nextBySex),
     lastNextAlert: cloneAlert(session.lastNextAlert),
+    ...(session.undoStack !== undefined
+      ? { undoStack: session.undoStack.map((u) => ({ ...u, ...(u.previousEntryIds ? { previousEntryIds: [...u.previousEntryIds] } : {}) })) }
+      : {}),
   };
 }
 
@@ -194,6 +199,17 @@ export function toSessionSnapshot(
     staff: session.staff.map(cloneStaff),
     nextBySex: cloneNextBySex(session.nextBySex),
     lastNextAlert: cloneAlert(session.lastNextAlert),
+    ...(session.undoStack && session.undoStack.length > 0
+      ? {
+          undoStack: session.undoStack.map((u) => ({
+            id: u.id,
+            action: u.action,
+            actorKey: u.actorKey,
+            studentNumber: u.studentNumber,
+            createdAt: u.createdAt,
+          })),
+        }
+      : {}),
   };
 }
 
@@ -602,6 +618,22 @@ export function applyEntryAction(
 
   nextEntries[targetIndex] = updatedEntry;
 
+  const undoRecord: UndoRecord = {
+    id: defaultIdGenerator(),
+    action: input.action,
+    actorKey: input.actorKey ?? "controller",
+    entryId: target.id,
+    studentNumber: target.studentNumber,
+    previousStatus: target.status,
+    previousEnteredAt: target.enteredAt,
+    previousReturnedAt: target.returnedAt,
+    previousOverride: target.override,
+    createdAt: nowMs,
+  };
+  const nextUndoStack = [...(session.undoStack ?? []), undoRecord].slice(
+    -MAX_UNDO_HISTORY,
+  );
+
   const reconciled = reconcileNextAndAlerts({
     prevNextBySex: session.nextBySex,
     prevEntries: session.entries,
@@ -617,6 +649,7 @@ export function applyEntryAction(
     nextBySex: reconciled.nextBySex,
     alertSeq: reconciled.alertSeq,
     lastNextAlert: reconciled.lastNextAlert,
+    undoStack: nextUndoStack,
     version: session.version + 1,
   };
 
@@ -722,6 +755,19 @@ export function reorderQueuedEntry(
     nextEntries[queuedIndices[i]] = queuedForSex[i];
   }
 
+  const undoRecord: UndoRecord = {
+    id: defaultIdGenerator(),
+    action: "reorder",
+    actorKey: "controller",
+    entryId: targetEntry.id,
+    studentNumber: targetEntry.studentNumber,
+    previousEntryIds: session.entries.map((e) => e.id),
+    createdAt: nowMs,
+  };
+  const nextUndoStack = [...(session.undoStack ?? []), undoRecord].slice(
+    -MAX_UNDO_HISTORY,
+  );
+
   const reconciled = reconcileNextAndAlerts({
     prevNextBySex: session.nextBySex,
     prevEntries: session.entries,
@@ -737,6 +783,7 @@ export function reorderQueuedEntry(
     nextBySex: reconciled.nextBySex,
     alertSeq: reconciled.alertSeq,
     lastNextAlert: reconciled.lastNextAlert,
+    undoStack: nextUndoStack,
     version: session.version + 1,
   };
 }
@@ -769,7 +816,153 @@ export function clearSession(
     entries: [],
     nextBySex: { M: null, F: null },
     lastNextAlert: null,
+    undoStack: [],
     clearedSeq: session.clearedSeq + 1,
+    version: session.version + 1,
+  };
+}
+
+export function applyUndo(
+  session: ExamSession,
+  input: { actorKey: string; isController: boolean },
+  nowMs: number = Date.now(),
+): ExamSession {
+  assertFiniteNow(nowMs);
+  const stack = session.undoStack ?? [];
+  let recordIndex = -1;
+  for (let i = stack.length - 1; i >= 0; i -= 1) {
+    const candidate = stack[i];
+    if (input.isController) {
+      recordIndex = i;
+      break;
+    }
+    if (
+      candidate.actorKey === input.actorKey &&
+      (candidate.action === "enter" || candidate.action === "return")
+    ) {
+      recordIndex = i;
+      break;
+    }
+  }
+
+  if (recordIndex < 0) {
+    throw new DomainError("NOT_FOUND", "Nothing to undo");
+  }
+
+  const record = stack[recordIndex];
+  const nextEntries = session.entries.map(cloneEntry);
+  let reorderedEntries: QueueEntry[] | null = null;
+
+  if (record.action === "reorder") {
+    const order = record.previousEntryIds ?? [];
+    const byId = new Map(nextEntries.map((e) => [e.id, e]));
+    const restored: QueueEntry[] = [];
+    for (const id of order) {
+      const item = byId.get(id);
+      if (item) {
+        restored.push(item);
+        byId.delete(id);
+      }
+    }
+    for (const remaining of byId.values()) {
+      restored.push(remaining);
+    }
+    reorderedEntries = restored;
+  } else {
+    const idx = nextEntries.findIndex((item) => item.id === record.entryId);
+    if (idx < 0) {
+      throw new DomainError(
+        "NOT_FOUND",
+        `Cannot undo: entry #${record.studentNumber} no longer exists`,
+      );
+    }
+    const target = nextEntries[idx];
+
+    if (record.action === "enter") {
+      if (target.status !== "in_bathroom") {
+        throw new DomainError(
+          "INVALID_STATE",
+          `Cannot undo enter for #${target.studentNumber} (status is '${target.status}')`,
+        );
+      }
+      nextEntries[idx] = {
+        ...target,
+        status: record.previousStatus ?? "queued",
+        enteredAt: record.previousEnteredAt ?? null,
+        override: record.previousOverride ?? false,
+      };
+    } else if (record.action === "return") {
+      if (target.status !== "returned") {
+        throw new DomainError(
+          "INVALID_STATE",
+          `Cannot undo return for #${target.studentNumber} (status is '${target.status}')`,
+        );
+      }
+      const occupied = nextEntries.find(
+        (item) => item.sex === target.sex && item.status === "in_bathroom",
+      );
+      if (occupied) {
+        throw new DomainError(
+          "BATHROOM_OCCUPIED",
+          `Cannot undo return for #${target.studentNumber} because #${occupied.studentNumber} is now in the bathroom`,
+        );
+      }
+      nextEntries[idx] = {
+        ...target,
+        status: "in_bathroom",
+        returnedAt: record.previousReturnedAt ?? null,
+      };
+    } else if (record.action === "remove") {
+      if (target.status !== "removed") {
+        throw new DomainError(
+          "INVALID_STATE",
+          `Cannot undo remove for #${target.studentNumber} (status is '${target.status}')`,
+        );
+      }
+      const normalized = target.studentNumber.trim().toLowerCase();
+      const duplicate = nextEntries.find(
+        (item) =>
+          item.id !== target.id &&
+          (item.status === "queued" || item.status === "in_bathroom") &&
+          item.studentNumber.trim().toLowerCase() === normalized,
+      );
+      if (duplicate) {
+        throw new DomainError(
+          "DUPLICATE_STUDENT",
+          `Cannot restore #${target.studentNumber} because that number is already active in the queue`,
+        );
+      }
+      nextEntries[idx] = {
+        ...target,
+        status: record.previousStatus ?? "queued",
+      };
+    }
+  }
+
+  const finalEntries = reorderedEntries ?? nextEntries;
+  const nextUndoStack = stack
+    .filter((_, idx) => idx !== recordIndex)
+    .map((u) => ({
+      ...u,
+      ...(u.previousEntryIds ? { previousEntryIds: [...u.previousEntryIds] } : {}),
+    }));
+
+  const reconciled = reconcileNextAndAlerts({
+    prevNextBySex: session.nextBySex,
+    prevEntries: session.entries,
+    entries: finalEntries,
+    prevAlertSeq: session.alertSeq,
+    prevLastNextAlert: session.lastNextAlert,
+    triggeredAt: nowMs,
+  });
+
+  return {
+    ...cloneSession(session),
+    entries: finalEntries,
+    nextBySex: reconciled.nextBySex,
+    alertSeq: reconciled.alertSeq,
+    lastNextAlert: reconciled.lastNextAlert,
+    undoStack: nextUndoStack,
     version: session.version + 1,
   };
 }

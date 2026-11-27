@@ -77,7 +77,7 @@ export const GUIDE_CONTENT: Record<Locale, GuideBundle> = {
             color: "#2563eb",
             action: "Staff: Click “Scan QR code”",
             detail:
-              "Opens your device camera to scan the Controller’s QR code and jump straight into the room.",
+              "Opens a large camera popup window to scan the Controller’s QR code and jump straight into the room.",
           },
           {
             num: 5,
@@ -188,9 +188,9 @@ export const GUIDE_CONTENT: Record<Locale, GuideBundle> = {
           {
             num: 5,
             color: "#7c3aed",
-            action: "Click the Staff count button",
+            action: "Click “Enlarge QR” (or tap the QR code)",
             detail:
-              "Opens the Checked In Staff drawer to see every proctor currently connected to your room.",
+              "Opens a fullscreen high-contrast QR modal so proctors across the exam hall can scan from a distance.",
           },
         ],
       },
@@ -264,9 +264,9 @@ export const GUIDE_CONTENT: Record<Locale, GuideBundle> = {
           {
             num: 5,
             color: "#7c3aed",
-            action: "Watch the live queue columns",
+            action: "Simultaneous Male & Female Summary + Escort Actions",
             detail:
-              "See who is currently In Bathroom, who is tagged NEXT, and your position in the waiting list.",
+              "See both Male and Female occupancy and Next-Up students side-by-side at a glance. Joined Staff can also tap Enter (→) and Mark Returned to escort students (without reordering or removing).",
           },
         ],
       },
@@ -365,30 +365,37 @@ export const GUIDE_CONTENT: Record<Locale, GuideBundle> = {
         id: "reset-sync",
         role: "controller",
         image: "/guide/08-reset-sync.png",
-        title: "8. Session Reset, Sync & Guide Access",
+        title: "8. Undo, Excel/CSV Log Export & Session Reset",
         subtitle:
-          "Safely clear the queue between back-to-back exams and access this manual anytime.",
+          "Undo accidental taps, export timestamped bathroom sequences to CSV (Excel), or reset between exams.",
         steps: [
           {
             num: 1,
+            color: "#7c3aed",
+            action: "Click “Undo”",
+            detail:
+              "Reverts the latest Enter, Return, Remove, or Reorder action (Staff can also Undo their own Enter/Return).",
+          },
+          {
+            num: 2,
+            color: "#059669",
+            action: "Click “Export CSV”",
+            detail:
+              "Downloads an Excel-ready UTF-8 CSV log with exam settings, staff list, and every student’s queued/entered/returned timestamps and duration.",
+          },
+          {
+            num: 3,
             color: "#dc2626",
             action: "Click Reset (↻) → “Confirm Clear”",
             detail:
               "Two-step confirmation clears all queue entries so you can reuse the same room link for the next exam period without losing your proctors.",
           },
           {
-            num: 2,
+            num: 4,
             color: "#0284c7",
             action: "Click “Guide” in the top bar",
             detail:
               "Opens this bilingual manual from any screen in ExamQ.",
-          },
-          {
-            num: 3,
-            color: "#475569",
-            action: "Footer Links",
-            detail:
-              "Quick access to the Guide and the GitHub repository credits at the bottom of every page.",
           },
         ],
       },
@@ -441,7 +448,7 @@ export const GUIDE_CONTENT: Record<Locale, GuideBundle> = {
             color: "#2563eb",
             action: "ผู้ช่วย: คลิก “สแกน QR โค้ด”",
             detail:
-              "เปิดกล้องมือถือหรือแท็บเล็ตเพื่อสแกน QR โค้ดจากหน้าจอผู้คุมห้องและเข้าสู่ห้องสอบทันที",
+              "เปิดหน้าต่างกล้องขนาดใหญ่แบบป๊อปอัปเพื่อสแกน QR โค้ดจากหน้าจอผู้คุมห้องและเข้าสู่ห้องสอบทันที",
           },
           {
             num: 5,
@@ -552,9 +559,9 @@ export const GUIDE_CONTENT: Record<Locale, GuideBundle> = {
           {
             num: 5,
             color: "#7c3aed",
-            action: "คลิกปุ่มจำนวนผู้ช่วย (รูปคน)",
+            action: "คลิก “ขยาย QR” (หรือแตะที่รูป QR)",
             detail:
-              "เปิดดูรายชื่อผู้ช่วยคุมสอบทุกคนที่ลงชื่อเข้าร่วมห้องสอบนี้แล้ว",
+              "เปิดหน้าต่าง QR ขนาดใหญ่เต็มตาเพื่อให้ผู้ช่วยที่อยู่ไกลสามารถสแกนได้สะดวก",
           },
         ],
       },
@@ -628,9 +635,9 @@ export const GUIDE_CONTENT: Record<Locale, GuideBundle> = {
           {
             num: 5,
             color: "#7c3aed",
-            action: "ติดตามคิวแบบเรียลไทม์",
+            action: "แถบสรุปคิวชายและหญิงพร้อมกัน + ปุ่มพาเข้าห้องน้ำ",
             detail:
-              "ตรวจสอบได้ว่าใครกำลังอยู่ในห้องน้ำ ใครเป็นคิวถัดไป (NEXT) และมีคิวรอกี่คน",
+              "เห็นสถานะห้องน้ำชายและหญิงพร้อมคิวถัดไปคู่กันตลอดเวลา และผู้ช่วยคุมสอบสามารถกด เข้า (→) หรือ กลับแล้ว ได้เช่นกัน (แต่ไม่สามารถย้ายลำดับหรือลบคิว)",
           },
         ],
       },
@@ -729,30 +736,37 @@ export const GUIDE_CONTENT: Record<Locale, GuideBundle> = {
         id: "reset-sync",
         role: "controller",
         image: "/guide/08-reset-sync.png",
-        title: "8. การล้างคิวเริ่มรอบใหม่ และคู่มือ",
+        title: "8. ย้อนกลับ (Undo), ส่งออก Excel/CSV และล้างคิว",
         subtitle:
-          "ล้างคิวระหว่างวิชาสอบได้อย่างปลอดภัย และเปิดดูคู่มือนี้ได้จากทุกหน้า",
+          "ย้อนกลับเมื่อกดพลาด ส่งออกประวัติคิวเป็นไฟล์ CSV (เปิดใน Excel ได้) หรือล้างคิวเริ่มรอบใหม่",
         steps: [
           {
             num: 1,
+            color: "#7c3aed",
+            action: "คลิก “ย้อนกลับ” (Undo)",
+            detail:
+              "ย้อนกลับการกดเข้า ออก ลบ หรือจัดลำดับคิวล่าสุดได้ทันที (ผู้ช่วยก็สามารถย้อนกลับการกดเข้า/ออกของตนเองได้)",
+          },
+          {
+            num: 2,
+            color: "#059669",
+            action: "คลิก “ส่งออก CSV”",
+            detail:
+              "ดาวน์โหลดไฟล์ CSV (UTF-8 รองรับภาษาไทยใน Excel) ที่มีข้อมูลเวลาสอบ รายชื่อผู้ช่วย และลำดับเวลาเข้า-ออกห้องน้ำของนักศึกษาทุกคน",
+          },
+          {
+            num: 3,
             color: "#dc2626",
             action: "คลิกไอคอนรีเซ็ต (↻) → “ยืนยันล้างคิว”",
             detail:
               "ยืนยัน 2 ขั้นตอนเพื่อล้างรายชื่อนักศึกษาทั้งหมดสำหรับเริ่มสอบวิชาถัดไป โดยที่ผู้ช่วยยังอยู่ในห้องเดิม",
           },
           {
-            num: 2,
+            num: 4,
             color: "#0284c7",
             action: "คลิก “คู่มือ” (Guide) ที่แถบด้านบน",
             detail:
               "เปิดคู่มือการใช้งาน 2 ภาษานี้ได้จากทุกหน้าของ ExamQ",
-          },
-          {
-            num: 3,
-            color: "#475569",
-            action: "แถบข้อมูลด้านล่าง (Footer)",
-            detail:
-              "เข้าถึงคู่มือและลิงก์ GitHub ของผู้พัฒนาได้จากด้านล่างของทุกหน้า",
           },
         ],
       },

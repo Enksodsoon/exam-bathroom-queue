@@ -8,11 +8,13 @@ import {
   acknowledgeAlert,
   applyEntryAction,
   clearSession,
+  postUndo,
   reorderEntry,
   rotateInvite,
   submitEntry,
   updateConfig,
 } from "@/lib/client/api";
+import { downloadSessionCsv } from "@/lib/client/exportCsv";
 import {
   createSerialMutationQueue,
   type EnqueueMutation,
@@ -28,6 +30,7 @@ import type { UseNextStudentAlertResult } from "@/lib/client/useNextStudentAlert
 import { usePushNotifications } from "@/lib/client/usePushNotifications";
 import { AlertBanner } from "./AlertBanner";
 import { useAppPreferences } from "./AppPreferencesProvider";
+import { DualQueueSummaryStrip } from "./DualQueueSummaryStrip";
 import { ExamTimelineBar } from "./ExamTimelineBar";
 import {
   BellIcon,
@@ -414,6 +417,24 @@ export function ControllerDashboard({
     }
   };
 
+  const handleUndo = async () => {
+    setQueueErrorState(null);
+    try {
+      await enqueueMutation(async () => {
+        const res = await postUndo(sessionId, { controllerKey });
+        onMutationSnapshot(res.snapshot);
+      });
+    } catch (err) {
+      setQueueErrorState({
+        clearedSeq: latestClearedSeqRef.current,
+        text:
+          err instanceof ApiClientError
+            ? err.message
+            : "Failed to undo last action.",
+      });
+    }
+  };
+
   const handleReorder = async (entryId: string, direction: "up" | "down") => {
     if (busyEntryIdsRef.current.has(entryId)) {
       return;
@@ -634,6 +655,32 @@ export function ControllerDashboard({
               <span className="font-mono tabular-nums">
                 {snapshot.staff.length}
               </span>
+            </button>
+
+            <button
+              type="button"
+              data-testid="undo-button"
+              disabled={!snapshot.undoStack || snapshot.undoStack.length === 0}
+              onClick={() => {
+                void handleUndo();
+              }}
+              aria-label={t.undoAria}
+              title={t.undoAria}
+              className="inline-flex h-11 items-center gap-1.5 rounded-full bg-slate-100 px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-200 focus:ring-2 focus:ring-slate-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            >
+              <ResetIcon className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{t.undoBtn}</span>
+            </button>
+
+            <button
+              type="button"
+              data-testid="export-csv-button"
+              onClick={() => downloadSessionCsv(snapshot, locale)}
+              aria-label={t.exportCsvAria}
+              title={t.exportCsvAria}
+              className="inline-flex h-11 items-center gap-1.5 rounded-full bg-slate-100 px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-200 focus:ring-2 focus:ring-slate-400 focus:outline-none dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            >
+              <span>{t.exportCsv}</span>
             </button>
 
             <PushAlertsButton push={push} />
@@ -1164,6 +1211,12 @@ export function ControllerDashboard({
           {queueError}
         </div>
       )}
+
+      {/* Simultaneous Male & Female Summary Strip */}
+      <DualQueueSummaryStrip
+        entries={snapshot.entries}
+        nextBySex={snapshot.nextBySex}
+      />
 
       {/* Focus-First Male & Female Queues */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">

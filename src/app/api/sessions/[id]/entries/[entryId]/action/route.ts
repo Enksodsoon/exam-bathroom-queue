@@ -1,9 +1,9 @@
 import type { NextRequest } from "next/server";
 import {
+  ApiHttpError,
   apiJson,
   handleApiError,
-  requireControllerKeyHeader,
-  verifyControllerKey,
+  verifyActorAuth,
 } from "@/lib/api/http";
 import { readJsonBody, validateEntryActionBody } from "@/lib/api/validation";
 import { applyEntryAction, toSessionSnapshot } from "@/lib/domain";
@@ -18,7 +18,6 @@ export async function POST(
 ) {
   try {
     const { id, entryId } = await context.params;
-    const providedKey = requireControllerKeyHeader(request);
     const body = await readJsonBody(request);
     const actionInput = validateEntryActionBody(body);
 
@@ -26,7 +25,20 @@ export async function POST(
     const { session, result: prevAlertSeq } = await store.mutate(
       id,
       (current) => {
-        verifyControllerKey(current.controllerKey, providedKey);
+        const actor = verifyActorAuth(request, current);
+        if (actor.role === "staff") {
+          if (actionInput.action === "remove" || actionInput.override) {
+            throw new ApiHttpError(
+              403,
+              "FORBIDDEN",
+              "Only the exam controller can remove or override queue entries",
+            );
+          }
+        }
+        const actorKey =
+          actor.role === "controller"
+            ? "controller"
+            : `staff:${actor.staffId}`;
         const nowMs = Date.now();
         const next = applyEntryAction(
           current,
@@ -34,6 +46,7 @@ export async function POST(
             entryId,
             action: actionInput.action,
             override: actionInput.override,
+            actorKey,
           },
           nowMs,
         );

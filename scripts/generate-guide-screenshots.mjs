@@ -221,8 +221,8 @@ async function main() {
         { num: 1, locator: homePage.getByTestId("locale-toggle"), dx: -48, dy: 48, color: "#0284c7" },
         { num: 2, locator: homePage.getByTestId("theme-toggle"), dx: 42, dy: 48, color: "#0284c7" },
         { num: 3, locator: homePage.getByRole("button", { name: "Create" }), dx: 0, dy: 64, color: "#059669" },
-        { num: 4, locator: homePage.getByRole("button", { name: "Scan QR code" }), dx: -115, dy: -46, color: "#2563eb" },
-        { num: 5, locator: homePage.getByPlaceholder("Staff link or code"), dx: -150, dy: 58, color: "#2563eb" },
+        { num: 4, locator: homePage.getByRole("button", { name: "Scan QR code" }), dx: 185, dy: -40, color: "#2563eb" },
+        { num: 5, locator: homePage.getByPlaceholder("Staff link or code"), dx: -195, dy: 0, color: "#2563eb" },
         { num: 6, locator: homePage.getByRole("button", { name: "Join" }), dx: 64, dy: 58, color: "#2563eb" },
       ],
       "01-home.png",
@@ -281,8 +281,8 @@ async function main() {
         { num: 1, locator: ctrlPage.getByRole("button", { name: "Share QR Code" }), dx: -56, dy: 58, color: "#0284c7" },
         { num: 2, locator: ctrlPage.locator("section svg").first(), dx: -120, dy: 0, color: "#2563eb" },
         { num: 3, locator: ctrlPage.getByRole("button", { name: "Copy Link" }), dx: 0, dy: -52, color: "#059669" },
-        { num: 4, locator: ctrlPage.getByRole("button", { name: "Rotate Join Link" }), dx: 86, dy: 54, color: "#d97706" },
-        { num: 5, locator: ctrlPage.getByRole("button", { name: "Connected Staff" }), dx: 64, dy: 58, color: "#7c3aed" },
+        { num: 4, locator: ctrlPage.getByRole("button", { name: "Rotate Join Link" }), dx: 40, dy: 54, color: "#d97706" },
+        { num: 5, locator: ctrlPage.getByTestId("enlarge-qr-button"), dx: 120, dy: 54, color: "#7c3aed" },
       ],
       "03-controller-share.png",
     );
@@ -321,7 +321,7 @@ async function main() {
         { num: 2, locator: staffPage.getByPlaceholder("Student #"), dx: -165, dy: -48, color: "#2563eb" },
         { num: 3, locator: staffPage.getByRole("button", { name: "Male", exact: true }), dx: 0, dy: -54, color: "#2563eb" },
         { num: 4, locator: staffPage.getByRole("button", { name: "Submit" }), dx: 92, dy: 52, color: "#059669" },
-        { num: 5, locator: staffPage.getByTestId("queue-column-M"), dx: -190, dy: 60, color: "#7c3aed" },
+        { num: 5, locator: staffPage.getByTestId("dual-queue-summary"), dx: -180, dy: -42, color: "#7c3aed" },
       ],
       "05-queue-submit.png",
     );
@@ -350,7 +350,7 @@ async function main() {
       ctrlPage,
       [
         { num: 1, locator: ctrlPage.getByTestId("occupancy-M"), dx: -130, dy: -48, color: "#d97706" },
-        { num: 2, locator: ctrlPage.getByRole("button", { name: "Returned" }).first(), dx: 115, dy: -42, color: "#059669" },
+        { num: 2, locator: ctrlPage.getByRole("button", { name: "Returned" }).first(), dx: 0, dy: -52, color: "#059669" },
         { num: 3, locator: ctrlPage.getByRole("button", { name: /Enter/i }).first(), dx: -115, dy: 50, color: "#2563eb" },
         { num: 4, locator: ctrlPage.getByRole("button", { name: "Move Up" }).first(), dx: 0, dy: 58, color: "#7c3aed" },
         { num: 5, locator: ctrlPage.getByRole("button", { name: "Remove" }).first(), dx: 72, dy: 58, color: "#dc2626" },
@@ -384,9 +384,10 @@ async function main() {
     await annotateAndSave(
       ctrlPage,
       [
-        { num: 1, locator: ctrlPage.getByRole("button", { name: "Confirm Clear" }), dx: -115, dy: 56, color: "#dc2626" },
-        { num: 2, locator: ctrlPage.getByTestId("guide-link"), dx: -75, dy: 52, color: "#0284c7" },
-        { num: 3, locator: ctrlPage.getByTestId("author-footer"), dx: 0, dy: -52, color: "#475569" },
+        { num: 1, locator: ctrlPage.getByTestId("undo-button"), dx: -95, dy: 52, color: "#7c3aed" },
+        { num: 2, locator: ctrlPage.getByTestId("export-csv-button"), dx: -30, dy: 52, color: "#059669" },
+        { num: 3, locator: ctrlPage.getByRole("button", { name: "Confirm Clear" }), dx: 55, dy: 56, color: "#dc2626" },
+        { num: 4, locator: ctrlPage.getByTestId("guide-link"), dx: 100, dy: 52, color: "#0284c7" },
       ],
       "08-reset-sync.png",
     );

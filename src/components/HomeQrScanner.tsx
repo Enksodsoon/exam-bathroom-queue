@@ -130,26 +130,54 @@ export function HomeQrScanner({ onJoin }: HomeQrScannerProps) {
         <QrIcon className="h-4 w-4" /> {t.scanQrCode}
       </button>
       {open && (
-        <section
+        <div
           id="home-qr-scanner"
+          role="dialog"
+          aria-modal="true"
           aria-label="Staff QR scanner"
-          onKeyDown={(e) => { if (e.key === "Escape") close(); }}
-          className="mt-3 space-y-2 rounded-2xl border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900/60"
+          data-testid="qr-scanner-modal"
+          onClick={close}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") close();
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-xs"
         >
-          <video
-            ref={video}
-            muted
-            playsInline
-            autoPlay
-            aria-label="Camera preview"
-            className={`max-h-60 w-full rounded-xl bg-slate-900 object-contain ${ready ? "" : "aspect-video"}`}
-          />
-          <p role="status" className="text-sm text-slate-700 dark:text-slate-300">{message}</p>
-          <button ref={closeButton} type="button" onClick={close} aria-label={t.closeQrScanner}
-            title={t.closeQrScanner} className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-800 focus-visible:outline-2 dark:bg-slate-800 dark:text-slate-200">
-            <CloseIcon className="h-4 w-4" />
-          </button>
-        </section>
+          <section
+            onClick={(e) => e.stopPropagation()}
+            className="flex w-full max-w-md flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                {t.scannerModalTitle}
+              </h2>
+              <button
+                ref={closeButton}
+                type="button"
+                onClick={close}
+                aria-label={t.closeQrScanner}
+                title={t.closeQrScanner}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-800 transition hover:bg-slate-200 focus-visible:outline-2 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                <CloseIcon className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="relative overflow-hidden rounded-2xl bg-slate-950">
+              <video
+                ref={video}
+                muted
+                playsInline
+                autoPlay
+                aria-label="Camera preview"
+                className={`aspect-square w-full object-cover ${ready ? "" : "opacity-80"}`}
+              />
+            </div>
+
+            <p role="status" className="text-center text-sm text-slate-700 dark:text-slate-300">
+              {message}
+            </p>
+          </section>
+        </div>
       )}
     </div>
   );

@@ -68,6 +68,30 @@ export interface PushSubscriptionRecord {
   updatedAt: number;
 }
 
+export type UndoActionType = "enter" | "return" | "remove" | "reorder";
+
+export interface UndoRecord {
+  id: string;
+  action: UndoActionType;
+  actorKey: string;
+  entryId: string;
+  studentNumber: string;
+  previousStatus?: EntryStatus;
+  previousEnteredAt?: number | null;
+  previousReturnedAt?: number | null;
+  previousOverride?: boolean;
+  previousEntryIds?: string[];
+  createdAt: number;
+}
+
+export interface UndoSummary {
+  id: string;
+  action: UndoActionType;
+  actorKey: string;
+  studentNumber: string;
+  createdAt: number;
+}
+
 export interface ExamSession {
   id: string;
   controllerKey: string;
@@ -84,6 +108,7 @@ export interface ExamSession {
   staff: StaffMember[];
   nextBySex: NextBySex;
   lastNextAlert: AlertInfo | null;
+  undoStack?: UndoRecord[];
 }
 
 export interface SessionSnapshot {
@@ -101,6 +126,7 @@ export interface SessionSnapshot {
   staff: StaffMember[];
   nextBySex: NextBySex;
   lastNextAlert: AlertInfo | null;
+  undoStack?: UndoSummary[];
 }
 
 export type DomainErrorCode =
@@ -152,6 +178,7 @@ export interface ApplyEntryActionInput {
   entryId: string;
   action: EntryAction;
   override?: boolean;
+  actorKey?: string;
 }
 
 export interface WindowEvaluation {

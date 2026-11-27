@@ -99,6 +99,14 @@ export interface Translations {
   guideLabel: string;
   guideAria: string;
   backToApp: string;
+  exportCsv: string;
+  exportCsvAria: string;
+  undoBtn: string;
+  undoAria: string;
+  enlargeQr: string;
+  closeQrModal: string;
+  scannerModalTitle: string;
+  waitingShort: string;
 
   // Controller Dashboard
   timerButton: string;
@@ -270,6 +278,14 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     guideLabel: "Guide",
     guideAria: "Open instruction manual",
     backToApp: "Back to ExamQ",
+    exportCsv: "Export CSV",
+    exportCsvAria: "Export exam log as CSV",
+    undoBtn: "Undo",
+    undoAria: "Undo last queue action",
+    enlargeQr: "Enlarge QR",
+    closeQrModal: "Close large QR",
+    scannerModalTitle: "Scan Staff Invite QR",
+    waitingShort: "waiting",
 
     timerButton: "Timer",
     timerAria: "Exam Timer Settings",
@@ -435,6 +451,14 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     guideLabel: "คู่มือ",
     guideAria: "เปิดคู่มือการใช้งาน",
     backToApp: "กลับหน้าหลัก",
+    exportCsv: "ส่งออก CSV",
+    exportCsvAria: "ส่งออกบันทึกคิวเป็นไฟล์ CSV (Excel)",
+    undoBtn: "ย้อนกลับ",
+    undoAria: "ย้อนกลับการกระทำล่าสุด",
+    enlargeQr: "ขยาย QR",
+    closeQrModal: "ปิดหน้าต่าง QR",
+    scannerModalTitle: "สแกน QR เชิญผู้ช่วยคุมสอบ",
+    waitingShort: "รอคิว",
 
     timerButton: "เวลา",
     timerAria: "ตั้งค่าเวลาสอบ",

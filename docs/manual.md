@@ -16,7 +16,7 @@ Inside the live web app, you can also open the interactive guide at **`/guide`**
 | **1** | **Click “ไทย” / “EN”** — Switch the interface between English and Thai at any time. | **คลิก “ไทย” / “EN”** — สลับภาษาของระบบระหว่างภาษาไทยและภาษาอังกฤษได้ตลอดเวลา |
 | **2** | **Click Moon / Sun icon** — Toggle between Light Mode and Dark Mode. | **คลิกไอคอนพระจันทร์ / พระอาทิตย์** — สลับโหมดสว่าง (Light) และโหมดมืด (Dark) |
 | **3** | **Controller: Click “Create”** — Starts a new exam session and opens your Controller Dashboard. | **ผู้คุมห้อง: คลิก “สร้าง” (Create)** — สร้างห้องสอบใหม่และเปิดหน้าจัดการของผู้คุมห้อง |
-| **4** | **Staff: Click “Scan QR code”** — Opens your camera to scan the Controller’s QR code. | **ผู้ช่วย: คลิก “สแกน QR โค้ด”** — เปิดกล้องเพื่อสแกน QR โค้ดจากหน้าจอผู้คุมห้อง |
+| **4** | **Staff: Click “Scan QR code”** — Opens a large popup camera window to scan the Controller’s QR code. | **ผู้ช่วย: คลิก “สแกน QR โค้ด”** — เปิดหน้าต่างกล้องขนาดใหญ่แบบป๊อปอัปเพื่อสแกน QR โค้ด |
 | **5** | **Staff: Paste link or code** — Paste the invite URL or session code if camera access is unavailable. | **ผู้ช่วย: วางลิงก์หรือรหัสห้อง** — วางลิงก์เชิญหรือรหัสห้องหากไม่สามารถใช้กล้องได้ |
 | **6** | **Staff: Click “Join”** — Opens the Staff Check-In screen for that exam room. | **ผู้ช่วย: คลิก “เข้าร่วม” (Join)** — เข้าสู่หน้าลงชื่อผู้ช่วยคุมสอบของห้องนั้นๆ |
 
@@ -47,7 +47,7 @@ Inside the live web app, you can also open the interactive guide at **`/guide`**
 | **2** | **Scan the QR Code** — Proctors scan this QR code to join without typing. | **สแกน QR โค้ด** — ผู้ช่วยสแกนเพื่อเข้าห้องสอบทันทีโดยไม่ต้องพิมพ์ลิงก์ |
 | **3** | **Click “Copy”** — Copies the invite URL to your clipboard. | **คลิก “คัดลอก”** — คัดลอกลิงก์เชิญลงคลิปบอร์ดเพื่อส่งต่อทาง LINE หรือแชท |
 | **4** | **Click “New Link”** — Generates a new invite code and invalidates old links. | **คลิก “ลิงก์ใหม่”** — สร้างรหัสเชิญใหม่และยกเลิกลิงก์เก่าเพื่อความปลอดภัย |
-| **5** | **Click Staff Count** — Opens the list of checked-in proctors. | **คลิกปุ่มจำนวนผู้ช่วย** — ดูรายชื่อผู้ช่วยที่ลงชื่อเข้าร่วมห้องสอบแล้ว |
+| **5** | **Click “Enlarge QR”** — Opens a fullscreen high-contrast QR modal for scanning from a distance. | **คลิก “ขยาย QR”** — เปิดหน้าต่าง QR ขนาดใหญ่เต็มตาเพื่อสแกนจากระยะไกล |
 
 ---
 
@@ -73,7 +73,7 @@ Inside the live web app, you can also open the interactive guide at **`/guide`**
 | **2** | **Enter “Student #”** — Type the student’s number (duplicate active numbers are blocked). | **กรอก “เลขประจำตัว”** — พิมพ์เลขที่นักศึกษา (ระบบป้องกันการส่งเลขซ้ำ) |
 | **3** | **Select “Male” or “Female”** — Routes to separate Male/Female queues (1 per gender in bathroom). | **เลือก “ชาย” หรือ “หญิง”** — แยกคิวชาย/หญิงอิสระ (เข้าได้พร้อมกันเพศละ 1 คน) |
 | **4** | **Click “Submit”** — Sends the student to the live queue immediately. | **คลิก “ส่งเข้าคิว”** — เพิ่มนักศึกษาเข้าสู่คิวรอและซิงค์ทันที |
-| **5** | **Watch the live queue** — Track who is In Bathroom, NEXT, and Waiting. | **ติดตามคิวแบบเรียลไทม์** — ดูคนเข้าห้องน้ำ คิวถัดไป (NEXT) และคิวรอ |
+| **5** | **Dual M/F Summary + Staff Escort** — View Male & Female occupancy side-by-side; Staff can also tap Enter (→) / Mark Returned (without moving or removing the queue). | **แถบสรุปชาย/หญิง + ปุ่มพาเข้าห้องน้ำ** — ดูสถานะชาย/หญิงคู่กัน และผู้ช่วยกด เข้า (→) / กลับแล้ว ได้ทันที (ไม่ย้ายลำดับหรือลบคิว) |
 
 ---
 
@@ -105,12 +105,13 @@ Inside the live web app, you can also open the interactive guide at **`/guide`**
 
 ---
 
-## 8. Session Reset, Sync & Guide Access / ล้างคิวเริ่มรอบใหม่ และคู่มือ
+## 8. Undo, Excel/CSV Log Export & Session Reset / ย้อนกลับ ส่งออก Excel/CSV และล้างคิว
 
 ![Session Reset](../public/guide/08-reset-sync.png)
 
 | # | English | ภาษาไทย |
 |---|---|---|
-| **1** | **Click Reset (↻) → “Confirm Clear”** — Two-step reset clears all queue entries for the next exam while keeping proctors connected. | **คลิกไอคอนรีเซ็ต (↻) → “ยืนยันล้างคิว”** — ล้างคิวทั้งหมดเพื่อเริ่มสอบรอบใหม่ โดยผู้ช่วยยังอยู่ในห้องเดิม |
-| **2** | **Click “Guide”** — Opens the interactive `/guide` manual from any page. | **คลิก “คู่มือ” (Guide)** — เปิดคู่มือ `/guide` ได้จากทุกหน้า |
-| **3** | **Footer Links** — Quick access to the Guide and Author GitHub credits. | **แถบด้านล่าง (Footer)** — เข้าถึงคู่มือและข้อมูล GitHub ผู้พัฒนา |
+| **1** | **Click “Undo”** — Reverts the latest Enter, Return, Remove, or Reorder (Staff can undo their own Enter/Return). | **คลิก “ย้อนกลับ” (Undo)** — ย้อนกลับการกดเข้า ออก ลบ หรือจัดลำดับคิวล่าสุดได้ทันที |
+| **2** | **Click “Export CSV”** — Downloads an Excel-ready UTF-8 CSV log with exam settings, staff list, and all timestamps/durations. | **คลิก “ส่งออก CSV”** — ดาวน์โหลดไฟล์ CSV (รองรับภาษาไทยใน Excel) พร้อมข้อมูลเวลาสอบและบันทึกเข้า-ออกทั้งหมด |
+| **3** | **Click Reset (↻) → “Confirm Clear”** — Two-step reset clears all queue entries for the next exam while keeping proctors connected. | **คลิกไอคอนรีเซ็ต (↻) → “ยืนยันล้างคิว”** — ล้างคิวทั้งหมดเพื่อเริ่มสอบรอบใหม่ โดยผู้ช่วยยังอยู่ในห้องเดิม |
+| **4** | **Click “Guide”** — Opens the interactive `/guide` manual from any page. | **คลิก “คู่มือ” (Guide)** — เปิดคู่มือ `/guide` ได้จากทุกหน้า |

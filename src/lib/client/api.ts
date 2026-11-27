@@ -274,7 +274,7 @@ export function submitEntry(
 
 export function applyEntryAction(
   sessionId: string,
-  controllerKey: string,
+  auth: string | RequestAuth,
   entryId: string,
   action: EntryAction,
   options?: { override?: boolean },
@@ -286,16 +286,42 @@ export function applyEntryAction(
       ? { action, override: options.override }
       : { action };
 
+  const headers: Record<string, string> = {};
+  if (typeof auth === "string") {
+    headers["x-controller-key"] = auth;
+  } else if (auth.controllerKey) {
+    headers["x-controller-key"] = auth.controllerKey;
+  } else if (auth.staffToken) {
+    headers["x-staff-token"] = auth.staffToken;
+  }
+
   return requestJson<SnapshotResponse>(
     `/api/sessions/${encodedId}/entries/${encodedEntryId}/action`,
     {
       method: "POST",
-      headers: {
-        "x-controller-key": controllerKey,
-      },
+      headers,
       body: JSON.stringify(body),
     },
   );
+}
+
+export function postUndo(
+  sessionId: string,
+  auth: RequestAuth,
+): Promise<SnapshotResponse> {
+  const encodedId = encodeURIComponent(sessionId);
+  const headers: Record<string, string> = {};
+  if (auth.controllerKey) {
+    headers["x-controller-key"] = auth.controllerKey;
+  } else if (auth.staffToken) {
+    headers["x-staff-token"] = auth.staffToken;
+  }
+
+  return requestJson<SnapshotResponse>(`/api/sessions/${encodedId}/undo`, {
+    method: "POST",
+    headers,
+    body: "{}",
+  });
 }
 
 export function reorderEntry(

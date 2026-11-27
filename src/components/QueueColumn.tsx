@@ -135,7 +135,7 @@ export function QueueColumn({
             )}
           </div>
 
-          {inBathroom && mode === "controller" && onEntryAction ? (
+          {inBathroom && onEntryAction ? (
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
@@ -207,48 +207,56 @@ export function QueueColumn({
                   </p>
                 </div>
 
-                {mode === "controller" && onEntryAction && onReorder && (
+                {(onEntryAction || (mode === "controller" && onReorder)) && (
                   <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      disabled={isBusy}
-                      onClick={() => onEntryAction(entry.id, "enter")}
-                      aria-label={`Enter Bathroom #${entry.studentNumber}`}
-                      title={`Enter Bathroom #${entry.studentNumber}`}
-                      className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-slate-800 focus:ring-2 focus:ring-slate-500 focus:outline-none disabled:opacity-40 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
-                    >
-                      <DoorEnterIcon className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isBusy || idx === 0}
-                      onClick={() => onReorder(entry.id, "up")}
-                      aria-label={`Move Up #${entry.studentNumber}`}
-                      title={`Move Up #${entry.studentNumber}`}
-                      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-100 focus:ring-2 focus:ring-slate-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-35 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                    >
-                      <ArrowUpIcon className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isBusy || idx === queued.length - 1}
-                      onClick={() => onReorder(entry.id, "down")}
-                      aria-label={`Move Down #${entry.studentNumber}`}
-                      title={`Move Down #${entry.studentNumber}`}
-                      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-100 focus:ring-2 focus:ring-slate-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-35 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                    >
-                      <ArrowDownIcon className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isBusy}
-                      onClick={() => onEntryAction(entry.id, "remove")}
-                      aria-label={`Remove #${entry.studentNumber}`}
-                      title={`Remove #${entry.studentNumber}`}
-                      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-700 transition hover:bg-rose-50 focus:ring-2 focus:ring-rose-400 focus:outline-none disabled:opacity-40 dark:border-rose-800 dark:bg-slate-800 dark:text-rose-400 dark:hover:bg-rose-950/50"
-                    >
-                      <TrashIcon className="h-4 w-4" />
-                    </button>
+                    {onEntryAction && (
+                      <button
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => onEntryAction(entry.id, "enter")}
+                        aria-label={`Enter Bathroom #${entry.studentNumber}`}
+                        title={`Enter Bathroom #${entry.studentNumber}`}
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-slate-800 focus:ring-2 focus:ring-slate-500 focus:outline-none disabled:opacity-40 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+                      >
+                        <DoorEnterIcon className="h-4 w-4" />
+                      </button>
+                    )}
+                    {mode === "controller" && onReorder && (
+                      <>
+                        <button
+                          type="button"
+                          disabled={isBusy || idx === 0}
+                          onClick={() => onReorder(entry.id, "up")}
+                          aria-label={`Move Up #${entry.studentNumber}`}
+                          title={`Move Up #${entry.studentNumber}`}
+                          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-100 focus:ring-2 focus:ring-slate-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-35 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                        >
+                          <ArrowUpIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isBusy || idx === queued.length - 1}
+                          onClick={() => onReorder(entry.id, "down")}
+                          aria-label={`Move Down #${entry.studentNumber}`}
+                          title={`Move Down #${entry.studentNumber}`}
+                          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-100 focus:ring-2 focus:ring-slate-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-35 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                        >
+                          <ArrowDownIcon className="h-4 w-4" />
+                        </button>
+                        {onEntryAction && (
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => onEntryAction(entry.id, "remove")}
+                            aria-label={`Remove #${entry.studentNumber}`}
+                            title={`Remove #${entry.studentNumber}`}
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-700 transition hover:bg-rose-50 focus:ring-2 focus:ring-rose-400 focus:outline-none disabled:opacity-40 dark:border-rose-800 dark:bg-slate-800 dark:text-rose-400 dark:hover:bg-rose-950/50"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        )}
+                      </>
+                    )}
                   </div>
                 )}
               </li>
