@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useAppPreferences } from "./AppPreferencesProvider";
 
 export function AuthorFooter() {
@@ -13,6 +14,13 @@ export function AuthorFooter() {
       <span>
         {t.copyrightNotice} · {t.authorRole}
       </span>
+      <span aria-hidden="true">·</span>
+      <Link
+        href="/guide"
+        className="inline-flex min-h-[44px] items-center font-medium text-slate-700 underline decoration-slate-300 underline-offset-4 transition hover:text-slate-900 dark:text-slate-300 dark:decoration-slate-600 dark:hover:text-white"
+      >
+        {t.guideLabel}
+      </Link>
       <span aria-hidden="true">·</span>
       <a
         href="https://github.com/Enksodsoon"

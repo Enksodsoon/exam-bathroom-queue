@@ -96,6 +96,9 @@ export interface Translations {
   authorName: string;
   authorRole: string;
   copyrightNotice: string;
+  guideLabel: string;
+  guideAria: string;
+  backToApp: string;
 
   // Controller Dashboard
   timerButton: string;
@@ -264,6 +267,9 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     authorName: "Piyakawin Sodsoon",
     authorRole: "Creator & Developer",
     copyrightNotice: "© 2026 Piyakawin Sodsoon",
+    guideLabel: "Guide",
+    guideAria: "Open instruction manual",
+    backToApp: "Back to ExamQ",
 
     timerButton: "Timer",
     timerAria: "Exam Timer Settings",
@@ -426,6 +432,9 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     authorName: "ปิยกวิน สดสุ่น",
     authorRole: "ผู้พัฒนาและออกแบบระบบ",
     copyrightNotice: "© 2026 ปิยกวิน สดสุ่น",
+    guideLabel: "คู่มือ",
+    guideAria: "เปิดคู่มือการใช้งาน",
+    backToApp: "กลับหน้าหลัก",
 
     timerButton: "เวลา",
     timerAria: "ตั้งค่าเวลาสอบ",
