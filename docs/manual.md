@@ -117,3 +117,5 @@ Inside the live web app, you can also open the interactive guide at **`/guide`**
 | **2** | **Click “Export CSV”** — Downloads an Excel-ready UTF-8 CSV log with exam settings, staff list, and all timestamps/durations. | **คลิก “ส่งออก CSV”** — ดาวน์โหลดไฟล์ CSV (รองรับภาษาไทยใน Excel) พร้อมข้อมูลเวลาสอบและบันทึกเข้า-ออกทั้งหมด |
 | **3** | **Click Reset (↻) → “Confirm Clear”** — Two-step reset clears all queue entries for the next exam while keeping proctors connected. | **คลิกไอคอนรีเซ็ต (↻) → “ยืนยันล้างคิว”** — ล้างคิวทั้งหมดเพื่อเริ่มสอบรอบใหม่ โดยผู้ช่วยยังอยู่ในห้องเดิม |
 | **4** | **Click “Guide”** — Opens the interactive `/guide` manual from any page. | **คลิก “คู่มือ” (Guide)** — เปิดคู่มือ `/guide` ได้จากทุกหน้า |
+
+> **Auto-Expiry & End Room / ลบห้องอัตโนมัติ 24 ชม.:** Inactive rooms automatically delete from the database after 24 hours. Controllers can also click **End Room → Confirm Delete / ปิดห้อง → ยืนยันลบห้อง** to delete a room immediately after an exam.

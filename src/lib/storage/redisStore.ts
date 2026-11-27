@@ -49,6 +49,7 @@ export interface RedisLike {
     keys: string[],
     args: TArgs,
   ): Promise<TData>;
+  del?(...keys: string[]): Promise<number>;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -197,5 +198,14 @@ export class UpstashRedisSessionStore implements SessionStore {
       "CONFLICT",
       `Concurrent update conflict on session '${sessionId}' after ${this.maxRetries} attempts`,
     );
+  }
+
+  async delete(sessionId: string): Promise<boolean> {
+    const key = this.keyFor(sessionId);
+    if (typeof this.redis.del === "function") {
+      const removed = await this.redis.del(key);
+      return removed > 0;
+    }
+    return false;
   }
 }

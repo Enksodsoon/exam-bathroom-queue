@@ -29,6 +29,7 @@ function getSessionLocksMap(): Map<string, Promise<void>> {
 const sessionLocks = getSessionLocksMap();
 const RETRYABLE_FS_CODES = new Set(["EPERM", "EBUSY", "EACCES"]);
 const MAX_RENAME_ATTEMPTS = 6;
+export const FILE_SESSION_TTL_MS = 86_400_000;
 
 function isNodeErrorWithCode(err: unknown, codes: Set<string>): boolean {
   return (
@@ -155,6 +156,7 @@ export class FileSessionStore implements SessionStore {
 
     return this.withSessionLock(session.id, async () => {
       await fs.mkdir(this.dataDir, { recursive: true });
+      await this.pruneExpiredFiles().catch(() => undefined);
 
       try {
         await fs.access(targetPath);
@@ -204,11 +206,44 @@ export class FileSessionStore implements SessionStore {
     });
   }
 
+  private async isExpired(filePath: string): Promise<boolean> {
+    try {
+      const stat = await fs.stat(filePath);
+      return Date.now() - stat.mtimeMs > FILE_SESSION_TTL_MS;
+    } catch {
+      return false;
+    }
+  }
+
+  private async pruneExpiredFiles(): Promise<void> {
+    const entries = await fs.readdir(this.dataDir);
+    const now = Date.now();
+    await Promise.all(
+      entries
+        .filter((name) => name.endsWith(".json"))
+        .map(async (name) => {
+          const fullPath = path.join(this.dataDir, name);
+          try {
+            const stat = await fs.stat(fullPath);
+            if (now - stat.mtimeMs > FILE_SESSION_TTL_MS) {
+              await fs.rm(fullPath, { force: true });
+            }
+          } catch {
+            // Ignore race conditions
+          }
+        }),
+    );
+  }
+
   async get(sessionId: string): Promise<ExamSession | null> {
     const targetPath = this.sessionPath(sessionId);
 
     return this.withSessionLock(sessionId, async () => {
       try {
+        if (await this.isExpired(targetPath)) {
+          await fs.rm(targetPath, { force: true }).catch(() => undefined);
+          return null;
+        }
         const raw = await fs.readFile(targetPath, "utf8");
         return parseStoredSession(raw);
       } catch (err) {
@@ -227,6 +262,13 @@ export class FileSessionStore implements SessionStore {
     const targetPath = this.sessionPath(sessionId);
 
     return this.withSessionLock(sessionId, async () => {
+      if (await this.isExpired(targetPath)) {
+        await fs.rm(targetPath, { force: true }).catch(() => undefined);
+        throw new StorageError(
+          "NOT_FOUND",
+          `Session '${sessionId}' not found`,
+        );
+      }
       let raw: string;
       try {
         raw = await fs.readFile(targetPath, "utf8");
@@ -244,6 +286,22 @@ export class FileSessionStore implements SessionStore {
       const { session: nextSession, result } = mutator(current);
       await this.writeAtomic(targetPath, current.id, nextSession);
       return { session: nextSession, result };
+    });
+  }
+
+  async delete(sessionId: string): Promise<boolean> {
+    const targetPath = this.sessionPath(sessionId);
+    return this.withSessionLock(sessionId, async () => {
+      try {
+        await fs.stat(targetPath);
+        await fs.rm(targetPath, { force: true });
+        return true;
+      } catch (err) {
+        if (isNodeErrorCode(err, "ENOENT")) {
+          return false;
+        }
+        throw err;
+      }
     });
   }
 }

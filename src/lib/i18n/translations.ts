@@ -111,6 +111,9 @@ export interface Translations {
   resumeBtn: string;
   dismissRecentAria: string;
   backToSession: string;
+  endRoomBtn: string;
+  confirmEndRoom: string;
+  autoExpireNote: string;
 
   // Controller Dashboard
   timerButton: string;
@@ -294,6 +297,9 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     resumeBtn: "Resume",
     dismissRecentAria: "Dismiss saved session",
     backToSession: "Back to Session",
+    endRoomBtn: "End Room",
+    confirmEndRoom: "Confirm Delete",
+    autoExpireNote: "Rooms auto-delete after 24h of inactivity.",
 
     timerButton: "Timer",
     timerAria: "Exam Timer Settings",
@@ -471,6 +477,9 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     resumeBtn: "เข้าห้องต่อ",
     dismissRecentAria: "ลบรายการห้องสอบที่บันทึกไว้",
     backToSession: "กลับเข้าห้องสอบ",
+    endRoomBtn: "ปิดห้อง",
+    confirmEndRoom: "ยืนยันลบห้อง",
+    autoExpireNote: "ห้องสอบจะถูกลบอัตโนมัติหลังไม่มีการใช้งาน 24 ชม.",
 
     timerButton: "เวลา",
     timerAria: "ตั้งค่าเวลาสอบ",

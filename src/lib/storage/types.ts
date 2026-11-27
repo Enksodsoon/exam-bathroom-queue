@@ -41,6 +41,7 @@ export interface SessionStore {
     sessionId: string,
     mutator: SessionMutator<T>,
   ): Promise<MutateResult<T>>;
+  delete(sessionId: string): Promise<boolean>;
 }
 
 export interface StorageHealth {

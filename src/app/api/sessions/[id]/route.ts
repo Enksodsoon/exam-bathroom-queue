@@ -3,7 +3,9 @@ import {
   ApiHttpError,
   apiJson,
   handleApiError,
+  requireControllerKeyHeader,
   verifyActorAuth,
+  verifyControllerKey,
 } from "@/lib/api/http";
 import { parseSinceVersion } from "@/lib/api/validation";
 import { evaluateExamWindow, toSessionSnapshot } from "@/lib/domain";
@@ -55,6 +57,26 @@ export async function GET(
       },
       200,
     );
+  } catch (err) {
+    return handleApiError(err);
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id } = await context.params;
+    const providedKey = requireControllerKeyHeader(request);
+    const store = getSessionStore();
+    const session = await store.get(id);
+    if (!session) {
+      throw new ApiHttpError(404, "NOT_FOUND", `Session '${id}' not found`);
+    }
+    verifyControllerKey(session.controllerKey, providedKey);
+    await store.delete(id);
+    return apiJson({ ok: true }, 200);
   } catch (err) {
     return handleApiError(err);
   }

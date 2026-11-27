@@ -389,3 +389,16 @@ export function acknowledgeAlert(
     body: JSON.stringify({ seq }),
   });
 }
+
+export function deleteSession(
+  sessionId: string,
+  controllerKey: string,
+): Promise<{ ok: true }> {
+  const encodedId = encodeURIComponent(sessionId);
+  return requestJson<{ ok: true }>(`/api/sessions/${encodedId}`, {
+    method: "DELETE",
+    headers: {
+      "x-controller-key": controllerKey,
+    },
+  });
+}

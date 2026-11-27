@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { FIRST_BLOCK_MINUTES, LAST_BLOCK_MINUTES, MAX_BLOCK_MINUTES, getExamBlockMinutes, isValidExamBlockMinutes } from "@/lib/domain/window";
 import type { EntryAction, SessionSnapshot, Sex } from "@/lib/domain/types";
 import {
@@ -8,6 +9,7 @@ import {
   acknowledgeAlert,
   applyEntryAction,
   clearSession,
+  deleteSession,
   postUndo,
   reorderEntry,
   rotateInvite,
@@ -15,6 +17,7 @@ import {
   updateConfig,
 } from "@/lib/client/api";
 import { downloadSessionCsv } from "@/lib/client/exportCsv";
+import { clearControllerKey, removeRecentSession } from "@/lib/client/storage";
 import {
   createSerialMutationQueue,
   type EnqueueMutation,
@@ -85,6 +88,7 @@ export function ControllerDashboard({
   onMutationSnapshot,
 }: ControllerDashboardProps) {
   const { locale, t } = useAppPreferences();
+  const router = useRouter();
   const [activeDrawer, setActiveDrawer] = useState<ActiveDrawer>(null);
   const push = usePushNotifications(sessionId, { controllerKey });
   const timerBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -125,6 +129,8 @@ export function ControllerDashboard({
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [clearingSession, setClearingSession] = useState(false);
   const clearingSessionRef = useRef(false);
+  const [confirmingEndRoom, setConfirmingEndRoom] = useState(false);
+  const [endingRoom, setEndingRoom] = useState(false);
   const [clearMessage, setClearMessage] = useState<{
     tone: "error" | "success";
     text: string;
@@ -496,6 +502,30 @@ export function ControllerDashboard({
     }
   };
 
+  const handleEndRoom = async () => {
+    if (endingRoom) return;
+    setEndingRoom(true);
+    setQueueErrorState(null);
+    try {
+      await enqueueMutation(async () => {
+        await deleteSession(sessionId, controllerKey);
+      });
+      clearControllerKey(sessionId);
+      removeRecentSession(sessionId);
+      router.push("/");
+    } catch (err) {
+      setEndingRoom(false);
+      setConfirmingEndRoom(false);
+      setQueueErrorState({
+        clearedSeq: latestClearedSeqRef.current,
+        text:
+          err instanceof ApiClientError
+            ? err.message
+            : "Failed to end room.",
+      });
+    }
+  };
+
   const handleRotateInvite = async () => {
     if (rotatingInvite) {
       return;
@@ -749,6 +779,43 @@ export function ControllerDashboard({
                   className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-200"
                 >
                   <CloseIcon className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+
+            {!confirmingEndRoom ? (
+              <button
+                type="button"
+                data-testid="end-room-button"
+                onClick={() => {
+                  setConfirmingEndRoom(true);
+                  setConfirmingClear(false);
+                }}
+                aria-label={t.endRoomBtn}
+                title={t.endRoomBtn}
+                className="inline-flex h-11 items-center justify-center rounded-full border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 dark:border-rose-800/70 dark:bg-slate-800 dark:text-rose-300 dark:hover:bg-rose-950/60"
+              >
+                <span>{t.endRoomBtn}</span>
+              </button>
+            ) : (
+              <div className="flex flex-wrap items-center gap-1.5 rounded-full bg-rose-50 p-1 dark:bg-rose-950/60">
+                <button
+                  type="button"
+                  data-testid="confirm-end-room-button"
+                  disabled={endingRoom}
+                  onClick={() => {
+                    void handleEndRoom();
+                  }}
+                  className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-rose-700 px-3.5 text-xs font-semibold text-white transition hover:bg-rose-800 disabled:opacity-50"
+                >
+                  {endingRoom ? "..." : t.confirmEndRoom}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmingEndRoom(false)}
+                  className="inline-flex min-h-[44px] items-center justify-center rounded-full px-3 text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300"
+                >
+                  {t.cancel}
                 </button>
               </div>
             )}
@@ -1217,6 +1284,10 @@ export function ControllerDashboard({
         entries={snapshot.entries}
         nextBySex={snapshot.nextBySex}
       />
+
+      <p className="text-right text-[11px] text-slate-500 dark:text-slate-400">
+        {t.autoExpireNote}
+      </p>
 
       {/* Focus-First Male & Female Queues */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">

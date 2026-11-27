@@ -44,6 +44,16 @@ test("controller and staff automatically save sessions and can resume after leav
   await expect(staffTab2.getByTestId("dual-queue-summary")).toBeVisible();
   await expect(staffTab2.getByTitle("Switch Staff")).toContainText("Row C");
 
+  // 3. Controller clicks End Room -> Confirm Delete -> deletes room from DB & removes from Resume
+  await ctrlTab2.getByTestId("end-room-button").click();
+  await ctrlTab2.getByTestId("confirm-end-room-button").click();
+  await ctrlTab2.waitForURL("/", { timeout: 15000 });
+  await expect(ctrlTab2.getByTestId(`resume-session-${sessionId}`)).toHaveCount(0);
+
+  // Opening the deleted room returns Session Not Found
+  await ctrlTab2.goto(`/s/${sessionId}`);
+  await expect(ctrlTab2.getByRole("heading", { name: "Session Not Found" })).toBeVisible();
+
   await staffCtx.close();
   await ctrlCtx.close();
 });
