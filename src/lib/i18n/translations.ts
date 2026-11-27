@@ -107,6 +107,10 @@ export interface Translations {
   closeQrModal: string;
   scannerModalTitle: string;
   waitingShort: string;
+  resumeSessionTitle: string;
+  resumeBtn: string;
+  dismissRecentAria: string;
+  backToSession: string;
 
   // Controller Dashboard
   timerButton: string;
@@ -286,6 +290,10 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     closeQrModal: "Close large QR",
     scannerModalTitle: "Scan Staff Invite QR",
     waitingShort: "waiting",
+    resumeSessionTitle: "Resume Active Session",
+    resumeBtn: "Resume",
+    dismissRecentAria: "Dismiss saved session",
+    backToSession: "Back to Session",
 
     timerButton: "Timer",
     timerAria: "Exam Timer Settings",
@@ -459,6 +467,10 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     closeQrModal: "ปิดหน้าต่าง QR",
     scannerModalTitle: "สแกน QR เชิญผู้ช่วยคุมสอบ",
     waitingShort: "รอคิว",
+    resumeSessionTitle: "กลับเข้าห้องสอบเดิมอัตโนมัติ",
+    resumeBtn: "เข้าห้องต่อ",
+    dismissRecentAria: "ลบรายการห้องสอบที่บันทึกไว้",
+    backToSession: "กลับเข้าห้องสอบ",
 
     timerButton: "เวลา",
     timerAria: "ตั้งค่าเวลาสอบ",

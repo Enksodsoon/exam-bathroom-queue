@@ -20,6 +20,8 @@ Inside the live web app, you can also open the interactive guide at **`/guide`**
 | **5** | **Staff: Paste link or code** — Paste the invite URL or session code if camera access is unavailable. | **ผู้ช่วย: วางลิงก์หรือรหัสห้อง** — วางลิงก์เชิญหรือรหัสห้องหากไม่สามารถใช้กล้องได้ |
 | **6** | **Staff: Click “Join”** — Opens the Staff Check-In screen for that exam room. | **ผู้ช่วย: คลิก “เข้าร่วม” (Join)** — เข้าสู่หน้าลงชื่อผู้ช่วยคุมสอบของห้องนั้นๆ |
 
+> **Auto-Save & Resume / บันทึกห้องสอบอัตโนมัติ:** Active sessions are saved automatically in your browser. If you close the tab or return to Home (`/`), click **Resume / เข้าห้องต่อ** to jump straight back in without re-joining.
+
 ---
 
 ## 2. Exam Timer & Request Blocks / ตั้งเวลาสอบและช่วงงดขอเข้าห้องน้ำ

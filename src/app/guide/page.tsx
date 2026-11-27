@@ -6,10 +6,13 @@ import Link from "next/link";
 import { useAppPreferences } from "@/components/AppPreferencesProvider";
 import { AuthorFooter } from "@/components/AuthorFooter";
 import { ThemeLangToggle } from "@/components/ThemeLangToggle";
+import { useRecentSessions } from "@/lib/client/storage";
 import { GUIDE_CONTENT, type GuideRole } from "@/lib/i18n/guideContent";
 
 export default function GuidePage() {
   const { locale, t } = useAppPreferences();
+  const recentSessions = useRecentSessions();
+  const latestSession = recentSessions[0] ?? null;
   const bundle = GUIDE_CONTENT[locale];
   const [roleFilter, setRoleFilter] = useState<GuideRole>("all");
 
@@ -24,12 +27,12 @@ export default function GuidePage() {
     <main className="mx-auto min-h-screen w-full max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <Link
-          href="/"
+          href={latestSession ? `/s/${encodeURIComponent(latestSession.sessionId)}` : "/"}
           data-testid="guide-back-link"
           className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 focus:ring-2 focus:ring-slate-400 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
         >
           <span aria-hidden="true">←</span>
-          <span>{t.backToApp}</span>
+          <span>{latestSession ? t.backToSession : t.backToApp}</span>
         </Link>
 
         <div className="flex items-center gap-2">

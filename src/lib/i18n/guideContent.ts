@@ -94,7 +94,7 @@ export const GUIDE_CONTENT: Record<Locale, GuideBundle> = {
               "Opens the Staff Check-In screen for that exam session.",
           },
         ],
-        tip: "Controllers should click Create once per exam hall. Staff proctors should only use Scan QR code or Join.",
+        tip: "Controllers should click Create once per exam hall. Staff proctors should only use Scan QR code or Join. Your session is saved automatically — if you leave or close the tab, reopen Home and tap Resume.",
       },
       {
         id: "controller-timer",
@@ -465,7 +465,7 @@ export const GUIDE_CONTENT: Record<Locale, GuideBundle> = {
               "เข้าสู่หน้าลงชื่อผู้ช่วยคุมสอบของห้องนั้นๆ",
           },
         ],
-        tip: "ผู้คุมห้องควรกด “สร้าง” เพียง 1 ครั้งต่อ 1 ห้องสอบ ส่วนผู้ช่วยคุมสอบให้ใช้ “สแกน QR โค้ด” หรือ “เข้าร่วม” เท่านั้น",
+        tip: "ผู้คุมห้องควรกด “สร้าง” เพียง 1 ครั้งต่อ 1 ห้องสอบ ส่วนผู้ช่วยคุมสอบให้ใช้ “สแกน QR โค้ด” หรือ “เข้าร่วม” เท่านั้น ระบบจะบันทึกห้องสอบให้อัตโนมัติ หากปิดหน้าจอแล้วกลับมาหน้าหลักสามารถกด “เข้าห้องต่อ” ได้ทันที",
       },
       {
         id: "controller-timer",

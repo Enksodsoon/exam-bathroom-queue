@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   clearControllerKey,
   clearStaffIdentity,
+  removeRecentSession,
   saveControllerKey,
   useStoredControllerKey,
   useStoredStaffIdentity,
@@ -103,6 +104,12 @@ export function SessionWorkspace({
     },
     onSnapshot: alert.handleSnapshot,
   });
+
+  useEffect(() => {
+    if (initialNotFound || sync.notFound) {
+      removeRecentSession(sessionId);
+    }
+  }, [initialNotFound, sync.notFound, sessionId]);
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-6xl overflow-x-hidden px-4 py-5 sm:px-6 sm:py-8">
