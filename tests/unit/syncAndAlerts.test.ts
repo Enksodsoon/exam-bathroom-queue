@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  acknowledgeAlert,
+  applyEntryAction,
   clearSession,
   createSession,
   submitStudent,
@@ -376,6 +378,72 @@ describe("Client Sync & Alert Transitions", () => {
       );
       expect(res.type).toBe("reset");
       expect(res.nextTracker.seenAlertSeq).toBe(4);
+    });
+
+    it("triggers on consecutive return-to-ready transitions even for mid-turn joiners and after prior acknowledgment", () => {
+      const allowedNow = BASE_START + 40 * MIN;
+      let session = updateExamConfig(
+        createSession(BASE_START, { id: "ret-alert-sess", controllerKey: "ctrl" }),
+        { startTimeMs: BASE_START, durationMinutes: 120 },
+        BASE_START,
+      );
+
+      const m1 = submitStudent(session, { sex: "M", studentNumber: "101" }, allowedNow);
+      const m2 = submitStudent(m1.session, { sex: "M", studentNumber: "102" }, allowedNow + 100);
+      const m3 = submitStudent(m2.session, { sex: "M", studentNumber: "103" }, allowedNow + 200);
+      session = m3.session;
+
+      // M1 enters -> M2 becomes next (seq 2), and someone acknowledges seq 2
+      session = applyEntryAction(session, { entryId: m1.entry.id, action: "enter" }, allowedNow + 300).session;
+      session = acknowledgeAlert(session, { actorKey: "controller", label: "Controller", seq: 2 }, allowedNow + 350);
+
+      // Client joins mid-turn while M1 is in_bathroom and seq 2 is already acknowledged
+      let midTurnTracker: AlertTrackerState = { seenAlertSeq: 0, prevClearedSeq: null };
+      const midInitial = evaluateAlertSnapshot(
+        midTurnTracker,
+        toSessionSnapshot(session, allowedNow + 360),
+        { isInitial: true, enabled: true },
+      );
+      expect(midInitial.type).toBe("reset");
+      midTurnTracker = midInitial.nextTracker;
+
+      // M1 returns -> M2 is now ready -> seq increments to 3 without acknowledgedBy -> triggers!
+      session = applyEntryAction(session, { entryId: m1.entry.id, action: "return" }, allowedNow + 400).session;
+      const return1Eval = evaluateAlertSnapshot(
+        midTurnTracker,
+        toSessionSnapshot(session, allowedNow + 400),
+        { isInitial: false, enabled: true },
+      );
+      expect(return1Eval.type).toBe("trigger");
+      if (return1Eval.type === "trigger") {
+        expect(return1Eval.alert.seq).toBe(3);
+        expect(return1Eval.alert.studentNumber).toBe("102");
+        expect(return1Eval.alert.acknowledgedBy).toBeUndefined();
+      }
+      midTurnTracker = return1Eval.nextTracker;
+
+      // M2 enters (seq 4), then returns -> M3 is now ready -> seq 5 -> triggers again!
+      session = applyEntryAction(session, { entryId: m2.entry.id, action: "enter" }, allowedNow + 500).session;
+      const enter2Eval = evaluateAlertSnapshot(
+        midTurnTracker,
+        toSessionSnapshot(session, allowedNow + 500),
+        { isInitial: false, enabled: true },
+      );
+      expect(enter2Eval.type).toBe("trigger");
+      midTurnTracker = enter2Eval.nextTracker;
+
+      session = applyEntryAction(session, { entryId: m2.entry.id, action: "return" }, allowedNow + 600).session;
+      const return2Eval = evaluateAlertSnapshot(
+        midTurnTracker,
+        toSessionSnapshot(session, allowedNow + 600),
+        { isInitial: false, enabled: true },
+      );
+      expect(return2Eval.type).toBe("trigger");
+      if (return2Eval.type === "trigger") {
+        expect(return2Eval.alert.seq).toBe(5);
+        expect(return2Eval.alert.studentNumber).toBe("103");
+        expect(return2Eval.triggerCount).toBe(1);
+      }
     });
   });
 

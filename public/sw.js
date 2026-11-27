@@ -36,7 +36,6 @@ self.addEventListener("push", (event) => {
       icon: "/icons/icon-192.png",
       badge: "/icons/icon-192.png",
       silent: true,
-      renotify: true,
       requireInteraction: false,
       data: { url: payload.url },
     }),
@@ -52,9 +51,23 @@ self.addEventListener("notificationclick", (event) => {
     self.clients
       .matchAll({ type: "window", includeUncontrolled: true })
       .then((clientList) => {
+        let targetPath = targetUrl;
+        try {
+          targetPath = new URL(targetUrl, self.location.origin).pathname;
+        } catch {
+          // keep fallback string
+        }
         for (const client of clientList) {
-          if ("focus" in client && client.url.includes(targetUrl)) {
-            return client.focus();
+          if (!("focus" in client)) continue;
+          try {
+            const clientPath = new URL(client.url).pathname;
+            if (clientPath === targetPath) {
+              return client.focus();
+            }
+          } catch {
+            if (client.url.includes(targetUrl)) {
+              return client.focus();
+            }
           }
         }
         if (self.clients.openWindow) {

@@ -40,13 +40,45 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const base64 = (base64String + padding)
     .replace(/-/g, "+")
     .replace(/_/g, "/");
-  const rawData = window.atob(base64);
+  const rawData = globalThis.atob(base64);
   const buffer = new ArrayBuffer(rawData.length);
   const outputArray = new Uint8Array(buffer);
   for (let i = 0; i < rawData.length; i += 1) {
     outputArray[i] = rawData.charCodeAt(i);
   }
   return outputArray;
+}
+
+export function doesSubscriptionMatchVapidKey(
+  sub: PushSubscription,
+  vapidPublicKey: string,
+): boolean {
+  if (!vapidPublicKey) {
+    return false;
+  }
+  const rawKey: unknown = sub.options?.applicationServerKey;
+  if (!rawKey) {
+    return false;
+  }
+  const existingBytes =
+    rawKey instanceof ArrayBuffer
+      ? new Uint8Array(rawKey)
+      : ArrayBuffer.isView(rawKey)
+        ? new Uint8Array(rawKey.buffer, rawKey.byteOffset, rawKey.byteLength)
+        : null;
+  if (!existingBytes) {
+    return false;
+  }
+  const expectedBytes = urlBase64ToUint8Array(vapidPublicKey);
+  if (existingBytes.length !== expectedBytes.length) {
+    return false;
+  }
+  for (let i = 0; i < expectedBytes.length; i += 1) {
+    if (existingBytes[i] !== expectedBytes[i]) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function detectIosBrowserNotStandalone(): boolean {
@@ -174,17 +206,39 @@ export function usePushNotifications(
         });
         const existing = await reg.pushManager.getSubscription();
         if (cancelled) return;
+        if (!existing) {
+          setIsSubscribed(false);
+          return;
+        }
+        if (
+          vapidConfigured &&
+          !doesSubscriptionMatchVapidKey(existing, vapidPublicKey)
+        ) {
+          await existing.unsubscribe().catch(() => {});
+          if (!cancelled) {
+            setIsSubscribed(false);
+          }
+          return;
+        }
         const active = Boolean(
-          existing && Notification.permission === "granted",
+          vapidConfigured &&
+            Notification.permission === "granted" &&
+            doesSubscriptionMatchVapidKey(existing, vapidPublicKey),
         );
-        setIsSubscribed(active);
+        if (!active || !hasAuth) {
+          setIsSubscribed(false);
+          return;
+        }
 
-        if (active && existing && hasAuth) {
-          await syncSubscriptionToServer(sessionId, auth, existing).catch(
-            () => {
-              // Silent background re-sync; user can still re-toggle manually.
-            },
-          );
+        try {
+          await syncSubscriptionToServer(sessionId, auth, existing);
+          if (!cancelled) {
+            setIsSubscribed(true);
+          }
+        } catch {
+          if (!cancelled) {
+            setIsSubscribed(false);
+          }
         }
       } catch {
         // Ignore SW init errors on unsupported contexts (e.g. non-HTTPS non-localhost)
@@ -197,7 +251,15 @@ export function usePushNotifications(
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supported, sessionId, auth.controllerKey, auth.staffToken, hasAuth]);
+  }, [
+    supported,
+    sessionId,
+    auth.controllerKey,
+    auth.staffToken,
+    hasAuth,
+    vapidConfigured,
+    vapidPublicKey,
+  ]);
 
   const enablePush = useCallback(async (): Promise<boolean> => {
     setError(null);
@@ -235,6 +297,10 @@ export function usePushNotifications(
       await navigator.serviceWorker.register("/sw.js", { scope: "/" });
       const reg = await navigator.serviceWorker.ready;
       let sub = await reg.pushManager.getSubscription();
+      if (sub && !doesSubscriptionMatchVapidKey(sub, vapidPublicKey)) {
+        await sub.unsubscribe().catch(() => {});
+        sub = null;
+      }
       if (!sub) {
         sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
@@ -246,6 +312,7 @@ export function usePushNotifications(
       setIsSubscribed(true);
       return true;
     } catch (err) {
+      setIsSubscribed(false);
       setError(
         err instanceof Error
           ? err.message
@@ -329,10 +396,10 @@ export function usePushNotifications(
           body: "Quiet alert check — tap to return to ExamQ.",
           icon: "/icons/icon-192.png",
           badge: "/icons/icon-192.png",
-          tag: `examq-test-${sessionId}`,
+          tag: `examq-test-${sessionId}-${Date.now()}`,
           silent: true,
-          renotify: true,
-        } as NotificationOptions);
+          data: { url: `/s/${encodeURIComponent(sessionId)}` },
+        });
         setTestState("sent");
         return true;
       }

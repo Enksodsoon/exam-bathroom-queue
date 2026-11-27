@@ -286,7 +286,6 @@ test.describe('Tier 1 — Next-Student Alerts: Deterministic Seq, Visual, Audio 
       await api.submitEntry(s.sessionId, { sex: 'M', studentNumber: 'MUTED-1' });
       await staff.expectAlertContains('MUTED-1');
       const tWhileMuted = await readAlertTelemetry(page);
-      const countWhileMuted = effectiveAudioCount(tWhileMuted);
       expect(effectiveAudioCount(tWhileMuted)).toBe(0);
 
       await staff.toggleMute();

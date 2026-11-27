@@ -68,6 +68,7 @@ export default defineConfig({
           env: {
             ...process.env,
             EXAMQ_DATA_DIR: dataDir,
+            EXAMQ_DISABLE_RATE_LIMIT: '1',
             PORT: String(port),
             HOSTNAME: '127.0.0.1',
           },

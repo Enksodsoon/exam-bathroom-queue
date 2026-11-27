@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { doesSubscriptionMatchVapidKey } from "../../src/lib/client/usePushNotifications";
 import {
   acknowledgeAlert,
   createSession,
@@ -148,5 +149,32 @@ describe("push subscription domain helpers", () => {
     expect(rotated.pushSubscriptions?.map((s) => s.actorKey)).toEqual([
       "controller",
     ]);
+  });
+
+  it("verifies PushSubscription applicationServerKey bytes against current VAPID public key", () => {
+    const keyBytes = new Uint8Array([4, 1, 2, 3, 250, 251, 252, 253]);
+    const base64url = Buffer.from(keyBytes).toString("base64url");
+    const mismatchedBytes = new Uint8Array([4, 1, 2, 3, 250, 251, 252, 99]);
+
+    const makeMockSub = (applicationServerKey: ArrayBuffer | null) =>
+      ({
+        options: { applicationServerKey },
+      }) as unknown as PushSubscription;
+
+    expect(
+      doesSubscriptionMatchVapidKey(makeMockSub(keyBytes.buffer), base64url),
+    ).toBe(true);
+    expect(
+      doesSubscriptionMatchVapidKey(
+        makeMockSub(mismatchedBytes.buffer),
+        base64url,
+      ),
+    ).toBe(false);
+    expect(doesSubscriptionMatchVapidKey(makeMockSub(null), base64url)).toBe(
+      false,
+    );
+    expect(doesSubscriptionMatchVapidKey(makeMockSub(keyBytes.buffer), "")).toBe(
+      false,
+    );
   });
 });

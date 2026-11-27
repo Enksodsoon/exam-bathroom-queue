@@ -53,6 +53,7 @@ function getAudioContextConstructor(): AudioContextConstructor | null {
 
 export interface UseNextStudentAlertOptions {
   enabled?: boolean;
+  sessionId?: string;
 }
 
 export interface AlertTrackerState {
@@ -166,6 +167,7 @@ export function useNextStudentAlert(
   options?: UseNextStudentAlertOptions,
 ): UseNextStudentAlertResult {
   const enabled = options?.enabled ?? true;
+  const sessionId = options?.sessionId?.trim() || "";
   const [muted, setMuted] = useState(false);
   const [alertState, setAlertState] = useState<AlertRuntimeState>({
     activeAlert: null,
@@ -176,6 +178,7 @@ export function useNextStudentAlert(
   });
 
   const enabledRef = useRef(enabled);
+  const sessionIdRef = useRef(sessionId);
   const mutedRef = useRef(false);
   const seenAlertSeqRef = useRef(0);
   const prevClearedSeqRef = useRef<number | null>(null);
@@ -185,6 +188,10 @@ export function useNextStudentAlert(
   useEffect(() => {
     enabledRef.current = enabled;
   }, [enabled]);
+
+  useEffect(() => {
+    sessionIdRef.current = sessionId;
+  }, [sessionId]);
 
   useEffect(() => {
     mutedRef.current = muted;
@@ -361,16 +368,24 @@ export function useNextStudentAlert(
             Notification.permission === "granted" &&
             "serviceWorker" in navigator
           ) {
+            const activeSessionId = sessionIdRef.current;
+            const tag = activeSessionId
+              ? `examq-next-${activeSessionId}-${evaluation.alert.sex}-${evaluation.alert.seq}`
+              : `examq-next-${evaluation.alert.sex}-${evaluation.alert.seq}`;
+            const targetUrl = activeSessionId
+              ? `/s/${encodeURIComponent(activeSessionId)}`
+              : "/";
+
             void navigator.serviceWorker.ready
               .then((reg) =>
                 reg.showNotification("ExamQ · Queue updated", {
                   body: "Open ExamQ to check the current queue.",
                   icon: "/icons/icon-192.png",
                   badge: "/icons/icon-192.png",
-                  tag: `examq-next-${evaluation.alert.sex}`,
+                  tag,
                   silent: true,
-                  renotify: true,
-                } as NotificationOptions),
+                  data: { url: targetUrl },
+                }),
               )
               .catch(() => {});
           }

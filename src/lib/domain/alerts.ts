@@ -28,6 +28,7 @@ export function computeNextBySex(entries: readonly QueueEntry[]): NextBySex {
 
 export interface ReconcileNextParams {
   prevNextBySex: NextBySex;
+  prevEntries?: readonly QueueEntry[];
   entries: readonly QueueEntry[];
   prevAlertSeq: number;
   prevLastNextAlert: AlertInfo | null;
@@ -53,6 +54,7 @@ export function reconcileNextAndAlerts(
     );
   }
 
+  const prevEntries = params.prevEntries ?? [];
   const nextBySex = computeNextBySex(params.entries);
   let alertSeq = params.prevAlertSeq;
   let lastNextAlert: AlertInfo | null = params.prevLastNextAlert
@@ -61,7 +63,18 @@ export function reconcileNextAndAlerts(
 
   for (const sex of ["M", "F"] as const) {
     const nextId = nextBySex[sex];
-    if (nextId !== null && nextId !== params.prevNextBySex[sex]) {
+    const wasOccupied = prevEntries.some(
+      (item) => item.sex === sex && item.status === "in_bathroom",
+    );
+    const isOccupied = params.entries.some(
+      (item) => item.sex === sex && item.status === "in_bathroom",
+    );
+    const becameVacant = wasOccupied && !isOccupied;
+
+    if (
+      nextId !== null &&
+      (nextId !== params.prevNextBySex[sex] || becameVacant)
+    ) {
       const entry = params.entries.find((item) => item.id === nextId);
       if (!entry) {
         throw new DomainError(

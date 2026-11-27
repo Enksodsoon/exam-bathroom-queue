@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DomainError,
+  acknowledgeAlert,
   applyEntryAction,
   clearSession,
   computeNextBySex,
@@ -1028,24 +1029,30 @@ describe("Domain Engine", () => {
         studentNumber: "M2",
       });
 
-      // M1 returns => M2 still head => seq stays 3
+      // M1 returns => M2 becomes ready (vacant bathroom + queued M2) => seq 4
       session = applyEntryAction(
         session,
         { entryId: m1.entry.id, action: "return" },
         now + 400,
       ).session;
-      expect(session.lastNextAlert?.seq).toBe(3);
+      expect(session.lastNextAlert).toMatchObject({
+        seq: 4,
+        sex: "M",
+        entryId: m2.entry.id,
+        studentNumber: "M2",
+        triggeredAt: now + 400,
+      });
 
-      // M2 enters => M queue empty (null) => NO new alert, seq stays 3
+      // M2 enters => M queue empty (null) => NO new alert, seq stays 4
       session = applyEntryAction(
         session,
         { entryId: m2.entry.id, action: "enter" },
         now + 500,
       ).session;
       expect(session.nextBySex.M).toBeNull();
-      expect(session.lastNextAlert?.seq).toBe(3);
+      expect(session.lastNextAlert?.seq).toBe(4);
 
-      // Add M3 while M2 active => M head becomes M3 => seq 4
+      // Add M3 while M2 active => M head becomes M3 => seq 5
       const m3 = submitStudent(
         session,
         { sex: "M", studentNumber: "M3" },
@@ -1054,12 +1061,12 @@ describe("Domain Engine", () => {
       );
       session = m3.session;
       expect(session.lastNextAlert).toMatchObject({
-        seq: 4,
+        seq: 5,
         sex: "M",
         entryId: m3.entry.id,
       });
 
-      // Add M4 & M5 (head stays M3) => seq stays 4
+      // Add M4 & M5 (head stays M3) => seq stays 5
       const m4 = submitStudent(
         session,
         { sex: "M", studentNumber: "M4" },
@@ -1073,33 +1080,33 @@ describe("Domain Engine", () => {
         { idGenerator: idGen },
       );
       session = m5.session;
-      expect(session.lastNextAlert?.seq).toBe(4);
+      expect(session.lastNextAlert?.seq).toBe(5);
 
-      // Remove head M3 => M4 becomes head => seq 5
+      // Remove head M3 => M4 becomes head => seq 6
       session = applyEntryAction(
         session,
         { entryId: m3.entry.id, action: "remove" },
         now + 900,
       ).session;
       expect(session.lastNextAlert).toMatchObject({
-        seq: 5,
+        seq: 6,
         sex: "M",
         entryId: m4.entry.id,
       });
 
-      // Reorder M5 to head => seq 6
+      // Reorder M5 to head => seq 7
       session = reorderQueuedEntry(
         session,
         { entryId: m5.entry.id, direction: "up" },
         now + 1000,
       );
       expect(session.lastNextAlert).toMatchObject({
-        seq: 6,
+        seq: 7,
         sex: "M",
         entryId: m5.entry.id,
       });
 
-      // Reorder non-head (add M6 at tail then move M6 up to index 1 while M5 stays head) => seq stays 6
+      // Reorder non-head (add M6 at tail then move M6 up to index 1 while M5 stays head) => seq stays 7
       const m6 = submitStudent(
         session,
         { sex: "M", studentNumber: "M6" },
@@ -1112,7 +1119,137 @@ describe("Domain Engine", () => {
         now + 1200,
       );
       expect(session.nextBySex.M).toBe(m5.entry.id);
-      expect(session.lastNextAlert?.seq).toBe(6);
+      expect(session.lastNextAlert?.seq).toBe(7);
+    });
+
+    it("alerts on every consecutive return-to-ready turn, clears acknowledgedBy, and stays silent when returning to an empty queue", () => {
+      const idGen = makeSeqIdGen("ret");
+      const now = BASE_START + 45 * MIN;
+      let session = makeConfiguredSession(120);
+
+      const m1 = submitStudent(session, { sex: "M", studentNumber: "M1" }, now, {
+        idGenerator: idGen,
+      });
+      const m2 = submitStudent(
+        m1.session,
+        { sex: "M", studentNumber: "M2" },
+        now + 10,
+        { idGenerator: idGen },
+      );
+      const m3 = submitStudent(
+        m2.session,
+        { sex: "M", studentNumber: "M3" },
+        now + 20,
+        { idGenerator: idGen },
+      );
+      const f1 = submitStudent(
+        m3.session,
+        { sex: "F", studentNumber: "F1" },
+        now + 30,
+        { idGenerator: idGen },
+      );
+      const f2 = submitStudent(
+        f1.session,
+        { sex: "F", studentNumber: "F2" },
+        now + 40,
+        { idGenerator: idGen },
+      );
+      session = f2.session;
+      expect(session.alertSeq).toBe(2);
+
+      // M1 enters -> M2 head (seq 3), acknowledge seq 3 while M1 is still out
+      session = applyEntryAction(
+        session,
+        { entryId: m1.entry.id, action: "enter" },
+        now + 100,
+      ).session;
+      expect(session.lastNextAlert?.seq).toBe(3);
+      session = acknowledgeAlert(
+        session,
+        { actorKey: "staff:s1", label: "Hall 1", seq: 3 },
+        now + 150,
+      );
+      expect(session.lastNextAlert?.acknowledgedBy?.label).toBe("Hall 1");
+
+      // M1 returns -> M2 is now ready -> fresh seq 4 with acknowledgedBy cleared
+      session = applyEntryAction(
+        session,
+        { entryId: m1.entry.id, action: "return" },
+        now + 200,
+      ).session;
+      expect(session.alertSeq).toBe(4);
+      expect(session.lastNextAlert).toEqual({
+        seq: 4,
+        sex: "M",
+        entryId: m2.entry.id,
+        studentNumber: "M2",
+        triggeredAt: now + 200,
+      });
+      expect(session.lastNextAlert?.acknowledgedBy).toBeUndefined();
+
+      // M2 enters -> M3 head (seq 5), acknowledge seq 5
+      session = applyEntryAction(
+        session,
+        { entryId: m2.entry.id, action: "enter" },
+        now + 300,
+      ).session;
+      expect(session.lastNextAlert?.seq).toBe(5);
+      session = acknowledgeAlert(
+        session,
+        { actorKey: "controller", label: "Controller", seq: 5 },
+        now + 350,
+      );
+
+      // M2 returns -> M3 is now ready -> fresh seq 6 with acknowledgedBy cleared
+      session = applyEntryAction(
+        session,
+        { entryId: m2.entry.id, action: "return" },
+        now + 400,
+      ).session;
+      expect(session.alertSeq).toBe(6);
+      expect(session.lastNextAlert).toEqual({
+        seq: 6,
+        sex: "M",
+        entryId: m3.entry.id,
+        studentNumber: "M3",
+        triggeredAt: now + 400,
+      });
+
+      // F1 enters -> F2 head (seq 7), then F1 returns -> F2 ready (seq 8)
+      session = applyEntryAction(
+        session,
+        { entryId: f1.entry.id, action: "enter" },
+        now + 500,
+      ).session;
+      expect(session.lastNextAlert?.seq).toBe(7);
+      session = applyEntryAction(
+        session,
+        { entryId: f1.entry.id, action: "return" },
+        now + 600,
+      ).session;
+      expect(session.alertSeq).toBe(8);
+      expect(session.lastNextAlert).toMatchObject({
+        seq: 8,
+        sex: "F",
+        entryId: f2.entry.id,
+        studentNumber: "F2",
+        triggeredAt: now + 600,
+      });
+
+      // M3 enters (M queue empty -> stays 8) and M3 returns (empty queue -> stays 8)
+      session = applyEntryAction(
+        session,
+        { entryId: m3.entry.id, action: "enter" },
+        now + 700,
+      ).session;
+      expect(session.alertSeq).toBe(8);
+      session = applyEntryAction(
+        session,
+        { entryId: m3.entry.id, action: "return" },
+        now + 800,
+      ).session;
+      expect(session.alertSeq).toBe(8);
+      expect(session.lastNextAlert?.seq).toBe(8);
     });
 
     it("increments seq twice deterministically (M then F) when both heads change simultaneously", () => {

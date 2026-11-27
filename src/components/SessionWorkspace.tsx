@@ -92,7 +92,7 @@ export function SessionWorkspace({
   const canSync = !initialNotFound && (isController || Boolean(staffIdentity));
   const alertsEnabled = canSync;
 
-  const alert = useNextStudentAlert({ enabled: alertsEnabled });
+  const alert = useNextStudentAlert({ enabled: alertsEnabled, sessionId });
   const sync = useSessionSync(sessionId, {
     enabled: canSync,
     initialNotFound,

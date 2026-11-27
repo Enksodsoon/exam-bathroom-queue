@@ -480,6 +480,7 @@ export function submitStudent(
   }
   const reconciled = reconcileNextAndAlerts({
     prevNextBySex: session.nextBySex,
+    prevEntries: session.entries,
     entries: nextEntries,
     prevAlertSeq: session.alertSeq,
     prevLastNextAlert: session.lastNextAlert,
@@ -603,6 +604,7 @@ export function applyEntryAction(
 
   const reconciled = reconcileNextAndAlerts({
     prevNextBySex: session.nextBySex,
+    prevEntries: session.entries,
     entries: nextEntries,
     prevAlertSeq: session.alertSeq,
     prevLastNextAlert: session.lastNextAlert,
@@ -722,6 +724,7 @@ export function reorderQueuedEntry(
 
   const reconciled = reconcileNextAndAlerts({
     prevNextBySex: session.nextBySex,
+    prevEntries: session.entries,
     entries: nextEntries,
     prevAlertSeq: session.alertSeq,
     prevLastNextAlert: session.lastNextAlert,

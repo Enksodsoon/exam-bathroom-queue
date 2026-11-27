@@ -23,29 +23,38 @@ function ensureVapidConfigured(): boolean {
   return true;
 }
 
+export interface PushDeliverySummary {
+  attempted: number;
+  sent: number;
+  expiredPruned: number;
+  failed: number;
+}
+
 export async function sendNextStudentPushNotifications(
   sessionId: string,
   session: ExamSession,
   prevAlertSeq: number,
-): Promise<void> {
+): Promise<PushDeliverySummary> {
   const alert = session.lastNextAlert;
   if (!alert || alert.seq <= prevAlertSeq) {
-    return;
+    return { attempted: 0, sent: 0, expiredPruned: 0, failed: 0 };
   }
 
   const subs = session.pushSubscriptions ?? [];
   if (subs.length === 0 || !ensureVapidConfigured()) {
-    return;
+    return { attempted: 0, sent: 0, expiredPruned: 0, failed: 0 };
   }
 
   const payload = JSON.stringify({
     title: "ExamQ · Queue updated",
     body: "Open ExamQ to check the current queue.",
-    tag: `examq-next-${sessionId}-${alert.sex}`,
+    tag: `examq-next-${sessionId}-${alert.sex}-${alert.seq}`,
     url: `/s/${encodeURIComponent(sessionId)}`,
   });
 
   const expiredEndpoints: string[] = [];
+  let sent = 0;
+  let failed = 0;
 
   await Promise.allSettled(
     subs.map(async (sub) => {
@@ -58,6 +67,7 @@ export async function sendNextStudentPushNotifications(
           payload,
           { TTL: 60 },
         );
+        sent += 1;
       } catch (err) {
         const statusCode =
           typeof err === "object" && err !== null && "statusCode" in err
@@ -65,6 +75,15 @@ export async function sendNextStudentPushNotifications(
             : undefined;
         if (statusCode === 404 || statusCode === 410) {
           expiredEndpoints.push(sub.endpoint);
+        } else {
+          failed += 1;
+          console.error("[examq/push] Failed to send push notification", {
+            sessionId,
+            actorKey: sub.actorKey,
+            seq: alert.seq,
+            statusCode,
+            error: err instanceof Error ? err.message : String(err),
+          });
         }
       }
     }),
@@ -80,6 +99,13 @@ export async function sendNextStudentPushNotifications(
       // Best-effort cleanup
     }
   }
+
+  return {
+    attempted: subs.length,
+    sent,
+    expiredPruned: expiredEndpoints.length,
+    failed,
+  };
 }
 
 export async function sendTestPushNotification(
@@ -93,7 +119,7 @@ export async function sendTestPushNotification(
   const payload = JSON.stringify({
     title: "ExamQ · Lock-screen test",
     body: "Quiet alert check — tap to return to ExamQ.",
-    tag: `examq-test-${sessionId}`,
+    tag: `examq-test-${sessionId}-${Date.now()}`,
     url: `/s/${encodeURIComponent(sessionId)}`,
   });
 
@@ -121,6 +147,12 @@ export async function sendTestPushNotification(
         .catch(() => {});
       return { sent: false, reason: "Push subscription expired." };
     }
+    console.error("[examq/push] Failed to send test push notification", {
+      sessionId,
+      actorKey: sub.actorKey,
+      statusCode,
+      error: err instanceof Error ? err.message : String(err),
+    });
     return { sent: false, reason: "Push delivery failed." };
   }
 }

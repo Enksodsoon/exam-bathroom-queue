@@ -5,6 +5,7 @@ import {
   handleApiError,
   verifyActorAuth,
 } from "@/lib/api/http";
+import { enforceRateLimit } from "@/lib/api/rateLimit";
 import { readJsonBody } from "@/lib/api/validation";
 import { sendTestPushNotification } from "@/lib/push/sendPush";
 import { getSessionStore } from "@/lib/storage";
@@ -16,6 +17,13 @@ export async function POST(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
+    const limited = await enforceRateLimit(request, {
+      bucket: "push-test",
+      limit: 20,
+      windowSeconds: 60,
+    });
+    if (limited) return limited;
+
     const { id } = await context.params;
     const body = await readJsonBody(request);
     const endpoint =
