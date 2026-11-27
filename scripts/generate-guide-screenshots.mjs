@@ -386,15 +386,32 @@ async function main() {
       [
         { num: 1, locator: ctrlPage.getByTestId("undo-button"), dx: -95, dy: 52, color: "#7c3aed" },
         { num: 2, locator: ctrlPage.getByTestId("export-csv-button"), dx: -30, dy: 52, color: "#059669" },
-        { num: 3, locator: ctrlPage.getByRole("button", { name: "Confirm Clear" }), dx: 55, dy: 56, color: "#dc2626" },
-        { num: 4, locator: ctrlPage.getByTestId("guide-link"), dx: 100, dy: 52, color: "#0284c7" },
+        { num: 3, locator: ctrlPage.getByRole("button", { name: "Confirm Clear" }), dx: 30, dy: 56, color: "#dc2626" },
+        { num: 4, locator: ctrlPage.getByTestId("guide-link"), dx: 115, dy: 52, color: "#0284c7" },
+        { num: 5, locator: ctrlPage.getByTestId("end-room-button"), dx: 65, dy: 96, color: "#e11d48" },
       ],
       "08-reset-sync.png",
     );
 
+    // 9. Auto-Save & 1-Tap Resume on Home
+    const sessionId = ctrlPage.url().match(/\/s\/([^/?#]+)/)?.[1] ?? "";
+    await ctrlPage.goto(BASE_URL, { waitUntil: "load" });
+    await ctrlPage.getByTestId("resume-sessions-card").waitFor();
+    await ctrlPage.waitForTimeout(200);
+
+    await annotateAndSave(
+      ctrlPage,
+      [
+        { num: 1, locator: ctrlPage.getByTestId("resume-sessions-card").locator("span").first(), dx: -85, dy: -46, color: "#0284c7" },
+        { num: 2, locator: ctrlPage.getByTestId(`resume-session-${sessionId}`), dx: -70, dy: 52, color: "#059669" },
+        { num: 3, locator: ctrlPage.getByTestId("resume-sessions-card").getByRole("button", { name: "Dismiss saved session" }), dx: 64, dy: 52, color: "#dc2626" },
+      ],
+      "09-resume-session.png",
+    );
+
     await staffCtx.close();
     await homeCtx.close();
-    console.log("Successfully generated 8 annotated guide screenshots in public/guide/");
+    console.log("Successfully generated 9 annotated guide screenshots in public/guide/");
   } finally {
     if (browser) await browser.close();
     if (serverProc && serverProc.pid) {

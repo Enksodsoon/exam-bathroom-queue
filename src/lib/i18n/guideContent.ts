@@ -397,8 +397,47 @@ export const GUIDE_CONTENT: Record<Locale, GuideBundle> = {
             detail:
               "Opens this bilingual manual from any screen in ExamQ.",
           },
+          {
+            num: 5,
+            color: "#e11d48",
+            action: "Click “End Room” → “Confirm Delete”",
+            detail:
+              "Immediately deletes the exam room from the database when finished (rooms also auto-delete after 24 hours of inactivity).",
+          },
         ],
         tip: "All exam rooms automatically expire and delete from the database 24 hours after the last activity. You can also click End Room → Confirm Delete to remove a room immediately after an exam.",
+      },
+      {
+        id: "resume-session",
+        role: "all",
+        image: "/guide/09-resume-session.png",
+        title: "9. Auto-Save & 1-Tap Resume",
+        subtitle:
+          "Never lose your exam room if you leave the page or close the browser tab — both Controller and Staff sessions save automatically.",
+        steps: [
+          {
+            num: 1,
+            color: "#0284c7",
+            action: "Check your saved Role & Session ID",
+            detail:
+              "Displays whether you are Controller or Staff (with your row label) and the room code.",
+          },
+          {
+            num: 2,
+            color: "#059669",
+            action: "Click “Resume”",
+            detail:
+              "Jumps straight back into your active Controller Dashboard or Staff View with zero re-joining.",
+          },
+          {
+            num: 3,
+            color: "#dc2626",
+            action: "Click “×” (Dismiss)",
+            detail:
+              "Removes an old room shortcut from your browser’s recent list.",
+          },
+        ],
+        tip: "Your credentials stay saved in your browser even if you close the tab or switch to Guide and come back.",
       },
     ],
   },
@@ -769,8 +808,47 @@ export const GUIDE_CONTENT: Record<Locale, GuideBundle> = {
             detail:
               "เปิดคู่มือการใช้งาน 2 ภาษานี้ได้จากทุกหน้าของ ExamQ",
           },
+          {
+            num: 5,
+            color: "#e11d48",
+            action: "คลิก “ปิดห้อง” → “ยืนยันลบห้อง”",
+            detail:
+              "ลบห้องสอบออกจากฐานข้อมูลทันทีเมื่อสอบเสร็จ (และระบบจะลบให้อัตโนมัติหลังไม่มีการใช้งานครบ 24 ชม.)",
+          },
         ],
         tip: "ทุกห้องสอบจะหมดอายุและถูกลบออกจากฐานข้อมูลโดยอัตโนมัติหลังไม่มีการใช้งานครบ 24 ชั่วโมง หรือผู้คุมห้องสามารถกด “ปิดห้อง” → “ยืนยันลบห้อง” เพื่อลบทันทีหลังจบการสอบ",
+      },
+      {
+        id: "resume-session",
+        role: "all",
+        image: "/guide/09-resume-session.png",
+        title: "9. บันทึกห้องสอบอัตโนมัติและเข้าห้องต่อใน 1 คลิก",
+        subtitle:
+          "ไม่ต้องกังวลหากเผลอปิดแท็บหรือออกจากหน้าสอบ ทั้งผู้คุมห้องและผู้ช่วยจะถูกบันทึกสิทธิ์ไว้ให้อัตโนมัติ",
+        steps: [
+          {
+            num: 1,
+            color: "#0284c7",
+            action: "ตรวจสอบบทบาทและรหัสห้องที่บันทึกไว้",
+            detail:
+              "แสดงสถานะว่าเป็นผู้คุมห้อง (Controller) หรือผู้ช่วย (Staff พร้อมชื่อแถว) และรหัสห้องสอบ",
+          },
+          {
+            num: 2,
+            color: "#059669",
+            action: "คลิก “เข้าห้องต่อ” (Resume)",
+            detail:
+              "กลับเข้าสู่หน้าจัดการคิวเดิมได้ทันทีโดยไม่ต้องกรอกชื่อหรือสแกน QR ใหม่",
+          },
+          {
+            num: 3,
+            color: "#dc2626",
+            action: "คลิก “×” (ลบรายการ)",
+            detail:
+              "ซ่อนรายการห้องสอบเก่าออกจากหน้าหลักเมื่อไม่ต้องการใช้งานแล้ว",
+          },
+        ],
+        tip: "ระบบจะจำห้องสอบไว้ในเบราว์เซอร์ให้อัตโนมัติ แม้ปิดแท็บหรือเปิดดูคู่มือแล้วกลับมาใหม่",
       },
     ],
   },

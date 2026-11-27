@@ -117,5 +117,18 @@ Inside the live web app, you can also open the interactive guide at **`/guide`**
 | **2** | **Click “Export CSV”** — Downloads an Excel-ready UTF-8 CSV log with exam settings, staff list, and all timestamps/durations. | **คลิก “ส่งออก CSV”** — ดาวน์โหลดไฟล์ CSV (รองรับภาษาไทยใน Excel) พร้อมข้อมูลเวลาสอบและบันทึกเข้า-ออกทั้งหมด |
 | **3** | **Click Reset (↻) → “Confirm Clear”** — Two-step reset clears all queue entries for the next exam while keeping proctors connected. | **คลิกไอคอนรีเซ็ต (↻) → “ยืนยันล้างคิว”** — ล้างคิวทั้งหมดเพื่อเริ่มสอบรอบใหม่ โดยผู้ช่วยยังอยู่ในห้องเดิม |
 | **4** | **Click “Guide”** — Opens the interactive `/guide` manual from any page. | **คลิก “คู่มือ” (Guide)** — เปิดคู่มือ `/guide` ได้จากทุกหน้า |
+| **5** | **Click “End Room” → “Confirm Delete”** — Immediately deletes the room from the database when finished (inactive rooms also auto-delete after 24h). | **คลิก “ปิดห้อง” → “ยืนยันลบห้อง”** — ลบห้องออกจากฐานข้อมูลทันทีเมื่อสอบเสร็จ (ห้องที่ไม่มีการใช้งานจะถูกลบอัตโนมัติใน 24 ชม.) |
 
 > **Auto-Expiry & End Room / ลบห้องอัตโนมัติ 24 ชม.:** Inactive rooms automatically delete from the database after 24 hours. Controllers can also click **End Room → Confirm Delete / ปิดห้อง → ยืนยันลบห้อง** to delete a room immediately after an exam.
+
+---
+
+## 9. Auto-Save & 1-Tap Resume / บันทึกห้องสอบอัตโนมัติและเข้าห้องต่อใน 1 คลิก
+
+![Auto-Save & Resume](../public/guide/09-resume-session.png)
+
+| # | English | ภาษาไทย |
+|---|---|---|
+| **1** | **Saved Role & Session ID** — Shows your role (`Controller` or `Staff · Row`) and room code. | **บทบาทและรหัสห้องที่บันทึกไว้** — แสดงว่าเป็นผู้คุมห้องหรือผู้ช่วย พร้อมชื่อแถวและรหัสห้อง |
+| **2** | **Click “Resume”** — Jumps straight back into your active room without re-joining. | **คลิก “เข้าห้องต่อ” (Resume)** — กลับเข้าห้องสอบเดิมได้ทันทีโดยไม่ต้องสแกนหรือกรอกชื่อใหม่ |
+| **3** | **Click “×”** — Dismisses an old room shortcut from Home. | **คลิก “×”** — ลบรายการห้องสอบเก่าออกจากหน้าหลัก |

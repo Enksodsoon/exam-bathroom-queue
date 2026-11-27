@@ -16,12 +16,12 @@ test("bilingual instruction manual (/guide) renders all sections, screenshots, a
 
   await expect(page.getByRole("heading", { name: "ExamQ User Manual" })).toBeVisible();
   await expect(page.getByTestId("guide-section-home-onboarding")).toBeVisible();
-  await expect(page.getByTestId("guide-section-reset-sync")).toBeVisible();
+  await expect(page.getByTestId("guide-section-resume-session")).toBeVisible();
 
-  // Verify all 8 annotated screenshots load cleanly
+  // Verify all 9 annotated screenshots load cleanly
   const images = page.locator("section img");
-  await expect(images).toHaveCount(8);
-  for (let i = 0; i < 8; i += 1) {
+  await expect(images).toHaveCount(9);
+  for (let i = 0; i < 9; i += 1) {
     const img = images.nth(i);
     await img.scrollIntoViewIfNeeded();
     await expect
